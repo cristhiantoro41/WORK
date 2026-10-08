@@ -305,20 +305,29 @@
 
   function intentarMoverPorVoz(preg){
     if(!hayTablero()) return null;
-    if(!/(mueve|muevo|juega|mover|jugar|muevelo)/.test(preg)) return null;
     var uci = leerJugada(preg);
     if(!uci) return null;
+    /* solo si la pregunta parece una jugada: "mueve 44 a 56", "44 56", "44-56" */
+    var esJugada = /(mueve|muevo|juega|mover|jugar|muevelo|paso|ok|ya)/.test(preg)
+      || /^\s*\d{1,2}\s*[-a]+\s*\d{1,2}\s*$/.test(preg)
+      || (leerNums(preg).length>=2 && preg.trim().split(/\s+/).length<=3);
+    if(!esJugada) return null;
     var mov = UI.motor.pos.movimientoDesdeTexto(uci);
     if(!mov) return 'x';
     var na = numDe(aTexto(mov.origen)), nb = numDe(aTexto(mov.destino));
     if(!aplicarMov(mov)) return 'x';
+    var tuya = na+'-'+nb;
+    /* turno de la IA: responde */
     var m = mejorUci();
     if(m){
       var mm = UI.motor.pos.movimientoDesdeTexto(m);
-      if(mm) aplicarMov(mm);
-      return na+' ... '+nb+'  |  '+decirUci(m);
+      if(mm){
+        var mia = formatoMov(mm);
+        aplicarMov(mm);
+        return tuya+'  |  '+mia;
+      }
     }
-    return na+' ... '+nb;
+    return tuya;
   }
 
   /* ------------------------------------------------------- comandos */

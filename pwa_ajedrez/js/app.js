@@ -749,6 +749,32 @@ function configurarEventos() {
     limpiarArrastre();
     render();
   });
+
+  /* Respaldo con clic: solo actua si el puntero NO proceso el toque
+   * (algunes moviles no disparan pointerdown de forma fiable). */
+  var manejoPuntero = false;
+  t.addEventListener('pointerdown', function () { manejoPuntero = true; }, true);
+  t.addEventListener('click', function (ev) {
+    if (manejoPuntero) { manejoPuntero = false; return; }
+    if (!esTurnoHumano()) return;
+    var c = punteroACasilla(ev);
+    if (!c) return;
+    if (UI.seleccion) {
+      var cand = candidatosDestino(c);
+      if (cand.length) { ejecutarCandidatas(cand); return; }
+    }
+    var pieza = UI.motor.tablero[c[0]][c[1]];
+    if (pieza !== '.' && esBlanca(pieza) === UI.motor.turno) {
+      UI.seleccion = c;
+      UI.destinos = UI.motor.jugadas_legales().filter(function (m) {
+        return m.origen[0] === c[0] && m.origen[1] === c[1];
+      });
+    } else {
+      UI.seleccion = null;
+      UI.destinos = [];
+    }
+    render();
+  });
 }
 
 /* --------------------------------------------------------------- controles */
