@@ -15,7 +15,7 @@
 
   function limpiar(){
     mensajes.innerHTML='';
-    localStorage.removeItem('ajedrez_chat');
+    try{localStorage.removeItem('ajedrez_chat');}catch(e){}
   }
 
   function guardar(){
@@ -24,7 +24,7 @@
       const who = m.classList.contains('msg-user')?'user':'bot';
       items.push({who,text:m.textContent});
     });
-    localStorage.setItem('ajedrez_chat', JSON.stringify(items.slice(-30)));
+    try{localStorage.setItem('ajedrez_chat', JSON.stringify(items.slice(-40)));}catch(e){}
   }
 
   function cargar(){
@@ -38,61 +38,61 @@
     if(!window.UI||!UI.motor)return null;
     const fen = UI.motor.fen();
     const pos = UI.motor.pos;
-    return {fen, turno: pos.turno, legals: (pos.movimientosLegales||[]).map(m=>m.uci)};
-  }
-
-  function sugerir(){
-    const st = getEstado();
-    if(!st)return;
-    sugerencias.innerHTML='';
-    const ideas = ['mejor jugada','explica posición','analiza FEN','sugiere 2 jugadas','explica última jugada'];
-    ideas.forEach(t=>{
-      const b=document.createElement('button');
-      b.className='sug'; b.textContent=t;
-      b.onclick=()=>{input.value=t+' ('+st.fen+')';};
-      sugerencias.appendChild(b);
-    });
+    const legals = (pos.movimientosLegales||[]).map(m=>m.uci);
+    const hist = (UI.jugadas||[]).slice(-10);
+    return {fen, turno: pos.turno, legals, hist};
   }
 
   function mejorUci(){
     try{
       if(!window.buscarRaiz||!UI.motor)return null;
-      const r = buscarRaiz(UI.motor.pos, 3, {fecha:Date.now(),nodos:0,paso:4096,mejor:null}, false);
+      const r = buscarRaiz(UI.motor.pos, 4, {fecha:Date.now(),nodos:0,paso:4096,mejor:null}, false);
       return r&&r.mov?r.mov.uci:null;
     }catch(e){return null;}
   }
 
+  function evalSimple(){
+    try{ if(window.evaluar&&UI.motor) return evaluar(UI.motor.pos); }catch(e){}
+    return 0;
+  }
+
   function responder(preg){
     const st = getEstado();
-    if(!st)return 'Sin posición.';
+    if(!st)return 'Sin posición. Empezá una partida o mueve una pieza.';
     const p = preg.toLowerCase();
     if(p.includes('mejor jugada')){
       const m = mejorUci();
-      return m? 'Mejor jugada sugerida (profundidad ~3): '+m : 'No encuentro sugerencia ahora.';
+      if(!m) return 'Jugadas legales: '+st.legals.slice(0,8).join(', ')+(st.legals.length>8?'...':'');
+      return 'Mejor jugada: '+m+'\nFEN: '+st.fen;
     }
-    if(p.includes('explica posicion')||p.includes('analiza fen')||p.includes('analiza pos')){
+    if(p.includes('analiza')||p.includes('explica posicion')||p.includes('explica la posicion')){
       const m = mejorUci();
-      return 'FEN: '+st.fen+'\nTurno: '+(st.turno?'Blancas':'Negras')+'\nJugadas legales: '+st.legals.length+'\nSugerencia: '+(m||'-')+'\n(Análisis local, offline)';
+      const ev = evalSimple();
+      return 'FEN: '+st.fen+'\nTurno: '+(st.turno?'Blancas':'Negras')+'\nLegales: '+st.legals.length+'\nEval (aprox): '+ev+'\nRecomendado: '+(m||'-')+'\nÚltimas: '+(st.hist.length?st.hist.join(' '):'-');
     }
-    if(p.includes('ultima jugada')||p.includes('explica última')){
-      return 'Usa historial/capturas para ver última jugada. Puedo sugerir mejor respuesta desde posición actual.';
-    }
-    if(p.includes('sugiere 2')){
+    if(p.includes('cual es la mejor jugada')){
       const m = mejorUci();
-      const otros = st.legals.filter(x=>x!==m).slice(0,1);
-      return 'Sugerencias:\n1) '+(m||otros[0]||'-')+'\n2) '+(otros[0]||'-');
+      return m? 'La mejor jugada ahora es '+m : 'Dame un momento o indica posición.';
     }
-    return 'Puedo: "mejor jugada", "explica posición", "analiza FEN", "sugiere 2 jugadas". FEN actual: '+st.fen;
+    if(p.includes('sugerir')||p.includes('sugerencia')){
+      const m = mejorUci();
+      const otros = st.legals.filter(x=>x!==m).slice(0,2);
+      return 'Te sugiero:\n- '+(m||otros[0]||'-')+(otros[0]&&m?'\n- '+otros[0]:'')+(otros[1]?'\n- '+otros[1]:'');
+    }
+    if(p.includes('fen')){
+      return 'FEN actual:\n'+st.fen;
+    }
+    return 'Puedo: "mejor jugada", "analiza", "sugerir 2 jugadas", "FEN". Pregunta lo que quieras.';
   }
 
-  btnEnviar.onclick=()=>{
+  btnEnviar.onclick=function(){
     const txt=input.value.trim(); if(!txt)return;
     addMsg(txt,'user'); guardar();
-    setTimeout(()=>{addMsg(responder(txt),'bot'); guardar();},100);
+    setTimeout(function(){ addMsg(responder(txt),'bot'); guardar(); }, 80);
     input.value=''; sugerir();
   };
-  input.onkeydown=e=>{if(e.key==='Enter')btnEnviar.click();};
+  input.onkeydown=function(e){ if(e.key==='Enter') btnEnviar.click(); };
   btnLimpiar.onclick=limpiar;
   cargar(); sugerir();
-  setInterval(sugerir,5000);
+  setInterval(sugerir,4000);
 })();
