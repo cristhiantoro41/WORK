@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es" data-tema="oscuro">
 <head>
 <meta charset="utf-8">
@@ -20,8 +20,8 @@
   </div>
   <div class="barra-acciones">
     <button id="btn-instalar" class="btn btn-destacado" hidden>INSTALAR APP</button>
-    <button id="btn-tema" class="btn btn-icono" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema">◐</button>
-    <button id="btn-sonido" class="btn btn-icono" title="Activar o silenciar el sonido" aria-label="Sonido">♪</button>
+    <button id="btn-tema" class="btn btn-icono" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema">â—</button>
+    <button id="btn-sonido" class="btn btn-icono" title="Activar o silenciar el sonido" aria-label="Sonido">â™ª</button>
     <button id="btn-numeros-top" class="btn btn-icono" title="Mostrar numeros 1-64" aria-label="Numeros">#</button>
   </div>
 </header>
@@ -69,14 +69,15 @@
       <button id="btn-nueva" class="btn btn-primario">Nueva partida</button>
       <button id="btn-deshacer" class="btn">Deshacer</button>
       <button id="btn-girar" class="btn">Girar tablero</button>
-      <button id="btn-numeros" class="btn">Mostrar números 1-64</button>
-      <button id="btn-sonido2" class="btn">Sonido: sí</button>
+      <button id="btn-numeros" class="btn">Mostrar nÃºmeros 1-64</button>
+      <button id="btn-sonido2" class="btn">Sonido: sÃ­</button>
       <button id="btn-tema2" class="btn">Tema: oscuro</button>
     </div>
 
     <div class="pestanas" role="tablist">
       <button class="pestana activa" id="tab-jugadas" data-destino="jugadas" role="tab">JUGADAS</button>
       <button class="pestana" id="tab-capturas" data-destino="capturas" role="tab">CAPTURAS</button>
+      <button class="pestana" id="tab-chat" data-destino="chat" role="tab">CHAT</button>
     </div>
 
     <div class="contenido">
@@ -88,11 +89,11 @@
         <div class="bloque capturadas">
           <div class="columna-capturas">
             <h3>FICHAJES BLANCAS</h3>
-            <div class="fichas" id="fichas-blancas"><span class="vacio">—</span></div>
+            <div class="fichas" id="fichas-blancas"><span class="vacio">â€”</span></div>
           </div>
           <div class="columna-capturas">
             <h3>FICHAJES NEGRAS</h3>
-            <div class="fichas" id="fichas-negras"><span class="vacio">—</span></div>
+            <div class="fichas" id="fichas-negras"><span class="vacio">â€”</span></div>
           </div>
         </div>
       </div>
@@ -118,17 +119,17 @@
       </div>
     </div>
 
-    <p class="leyenda">Peón = número de su casilla · " = caballo · ¿ = alfil · T = torre · D = dama · R = rey · Las piezas negras van en disco oscuro.</p>
+    <p class="leyenda">PeÃ³n = nÃºmero de su casilla Â· " = caballo Â· Â¿ = alfil Â· T = torre Â· D = dama Â· R = rey Â· Las piezas negras van en disco oscuro.</p>
   </aside>
 </main>
 
 <div class="modal" id="modal-promocion" hidden>
   <div class="modal-caja">
-    <h2>Promociona el peón</h2>
+    <h2>Promociona el peÃ³n</h2>
     <div class="promociones">
       <button class="btn-promo" data-promo="q"><span>D</span>Dama</button>
       <button class="btn-promo" data-promo="r"><span>T</span>Torre</button>
-      <button class="btn-promo" data-promo="b"><span>¿</span>Alfil</button>
+      <button class="btn-promo" data-promo="b"><span>Â¿</span>Alfil</button>
       <button class="btn-promo" data-promo="n"><span>"</span>Caballo</button>
     </div>
     <button class="btn btn-secundario" id="promo-cancelar">Cancelar</button>
@@ -150,6 +151,10 @@
 <script src="./js/engine.js"></script>
 <script src="./js/numeros.js"></script>
 <script src="./js/ia.js"></script>
+<script src="./js/chat.js"></script>
 <script src="./js/app.js"></script>
 </body>
 </html>
+
+
+

@@ -1,4 +1,4 @@
-/* app.css - Estilo tipo Lichess para la PWA del ajedrez numerado 1-64. */
+﻿/* app.css - Estilo tipo Lichess para la PWA del ajedrez numerado 1-64. */
 
 * { box-sizing: border-box; }
 
@@ -427,7 +427,7 @@ select:focus, input:focus { outline: none; border-color: var(--acento); }
 .botones .btn { font-size: 13.5px; padding: 9px 8px; text-align: center; }
 #btn-nueva { grid-column: span 2; }
 
-/* ------------------------------------------------------------------ pestañas */
+/* ------------------------------------------------------------------ pestaÃ±as */
 
 .pestanas {
   display: flex;
@@ -714,3 +714,17 @@ select:focus, input:focus { outline: none; border-color: var(--acento); }
   .campo-reloj { grid-column: span 1; }
   .leyenda { font-size: 11px; }
 }
+
+.chat-contenedor{display:flex;flex-direction:column;gap:10px;height:420px;background:var(--panel-2);border:1px solid var(--borde);border-radius:10px;padding:10px}
+.chat-header{display:flex;justify-content:space-between;align-items:center}
+.chat-mensajes{flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;background:var(--fondo);border:1px solid var(--borde);border-radius:8px;padding:8px}
+.msg{max-width:90%;padding:8px;border-radius:8px;border:1px solid var(--borde);white-space:pre-wrap;word-break:break-word}
+.msg-user{align-self:flex-end;background:linear-gradient(90deg,rgba(134,93,255,.25),transparent)}
+.msg-bot{align-self:flex-start;background:linear-gradient(-90deg,rgba(70,160,130,.25),transparent)}
+.chat-sugerencias{display:flex;flex-wrap:wrap;gap:6px}
+.sug{font-size:12px;padding:4px 8px;border:1px solid var(--borde);border-radius:999px;background:var(--panel);cursor:pointer}
+.sug:hover{background:var(--panel-2)}
+.chat-entrada{display:flex;gap:6px}
+.chat-entrada input{flex:1;padding:8px;border-radius:8px;border:1px solid var(--borde);background:var(--panel);color:var(--texto)}
+.chat-nota{font-size:11px;opacity:.7;margin:0}
+.btn-chico{padding:4px 8px;font-size:12px}
