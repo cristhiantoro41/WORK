@@ -936,3 +936,23 @@ if (document.readyState === 'loading') {
 } else {
   iniciar();
 }
+document.addEventListener('DOMContentLoaded', function(){
+  var btnA = document.getElementById('btn-abandonar');
+  if(btnA){
+    btnA.onclick = function(){
+      if(UI.fin) return;
+      var quien = UI.humanoEsBlancas ? 'Blancas abandonan' : 'Negras abandonan';
+      var gana = UI.humanoEsBlancas ? 'Ganan las Negras' : 'Ganan las Blancas';
+      UI.motor.deshacer = function(){ return null; };
+      UI.fin = true;
+      UI.estado = gana + ' - ' + quien;
+      var texto = gana + '. ' + quien + '.';
+      id('fin-titulo').textContent = 'Partida abandonada';
+      id('fin-texto').textContent = texto;
+      id('fin-resumen').innerHTML = '';
+      id('modal-fin').hidden = false;
+      if(UI.tick){ clearInterval(UI.tick); UI.tick=null; UI.relojArrancado=false; }
+      if(window.UI && UI.iaTimeout){ clearTimeout(UI.iaTimeout); UI.iaTimeout=null; }
+    };
+  }
+});

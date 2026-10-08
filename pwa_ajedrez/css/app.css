@@ -728,3 +728,5 @@ select:focus, input:focus { outline: none; border-color: var(--acento); }
 .chat-entrada input{flex:1;padding:8px;border-radius:8px;border:1px solid var(--borde);background:var(--panel);color:var(--texto)}
 .chat-nota{font-size:11px;opacity:.7;margin:0}
 .btn-chico{padding:4px 8px;font-size:12px}
+
+.btn-peligro{background:linear-gradient(90deg,#6b1e1e,#2b1212);border-color:#8a2a2a;color:#fff}
