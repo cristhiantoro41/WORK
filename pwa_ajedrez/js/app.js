@@ -10,7 +10,7 @@ var UI = {
   sonido: true,
   tema: 'oscuro',
   numeros: false,
-  reloj: false,
+  reloj: true,
   minutos: 10,
   invertido: false,
   seleccion: null,
