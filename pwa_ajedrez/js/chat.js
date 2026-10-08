@@ -346,7 +346,7 @@
     }
 
     if(/(opciones|sugiere|sugerencia|sugerencias|alternativas|dame ideas)/.test(p)){
-      return opcionesTexto(5);
+      return opcionesTexto(3);
     }
 
     if(/(mejor jugada|cual es la mejor|cuál es la mejor)/.test(p)){
