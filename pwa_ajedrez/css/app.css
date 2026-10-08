@@ -188,8 +188,9 @@ button, select, input { font-family: inherit; }
   box-shadow: 0 8px 26px var(--sombra);
 }
 
-/* -------------------------------------------------------------------- reloj */
+/* 
 
+--------------------------------------------------------
 .relojes {
   display: flex;
   gap: 10px;
@@ -730,3 +731,4 @@ select:focus, input:focus { outline: none; border-color: var(--acento); }
 .btn-chico{padding:4px 8px;font-size:12px}
 
 .btn-peligro{background:linear-gradient(90deg,#6b1e1e,#2b1212);border-color:#8a2a2a;color:#fff}
+
