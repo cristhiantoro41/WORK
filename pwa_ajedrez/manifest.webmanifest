@@ -1,0 +1,35 @@
+{
+  "name": "Ajedrez Numerado",
+  "short_name": "Ajedrez1-64",
+  "description": "Ajedrez con numeracion propia 1-64, multiplicaciones en las capturas y 12 niveles de IA. Funciona 100% offline.",
+  "lang": "es",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#161512",
+  "theme_color": "#161512",
+  "categories": ["games", "board"],
+  "icons": [
+    {
+      "src": "./iconos/icono-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./iconos/icono-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./iconos/icono-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pruebas del motor - Ajedrez 1-64</title>
+<style>
+  body { background: #1b1b1b; color: #e8e8e8; font-family: Consolas, monospace; padding: 16px; }
+  h1 { font-size: 18px; }
+  #resultado { font-size: 13px; line-height: 1.55; }
+  .ok { color: #8fd66a; }
+  .fallo { color: #ff6b5e; font-weight: bold; }
+  .resumen-ok { margin-top: 14px; padding: 8px; background: #1f3a1f; color: #9fe09f; font-weight: bold; }
+  .resumen-fallo { margin-top: 14px; padding: 8px; background: #3a1f1f; color: #ff9e9e; font-weight: bold; }
+  #titulo { color: #9fb8d0; }
+</style>
+</head>
+<body>
+<h1>Suite de verificacion de la PWA Ajedrez 1-64</h1>
+<h2 id="titulo">Ejecutando...</h2>
+<div id="resultado"></div>
+<script src="./js/engine.js"></script>
+<script src="./js/numeros.js"></script>
+<script src="./js/ia.js"></script>
+<script src="./tests.js"></script>
+</body>
+</html>

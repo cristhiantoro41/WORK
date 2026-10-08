@@ -1,0 +1,41 @@
+CAMPEONATO MUNDIAL - FISCHER vs SPASSKY, REYKJAVIK 1972
+Numeracion propia 1-64. Multiplican: peon x peon y peon x pieza menor.
+Todo producto cabe en 4 cifras (el maximo posible es 64x64 = 4096).
+  ------------------------------------------------------------------------------
+
+PARTIDA 6 - Fischer (blancas) - Spassky (negras) - 1972.07.23 - 1-0
+  81 plys - ultima jugada: 39.Rxf6
+  JUGADA     BANDO    PIEZA     CASILLA  NUM  ->  CASILLA  NUM  RESULTADO
+  ----------------------------------------------------------------------------
+  8.cxd5     Blancas  P x P         c4   58  ->      d5   54  58x54=3132
+  8...Nxd5   Negras   C x P         f6   25  ->      d5   54  54 (sin multiplicar)
+  9.Bxe7     Blancas  ¿ x ¿         h4    3  ->      e7   23  23 (sin multiplicar)
+  9...Qxe7   Negras   D x ¿         d8   11  ->      e7   23  23 (sin multiplicar)
+  10.Nxd5    Blancas  C x C         c3   55  ->      d5   54  54 (sin multiplicar)
+  10...exd5  Negras   P x C         e6   38  ->      d5   54  38x54=2052
+  15.dxc5    Blancas  P x P         d4   61  ->      c5   51  61x51=3111
+  15...bxc5  Negras   P x P         b6   33  ->      c5   51  33x51=1683
+  19.Nxe6    Blancas  C x ¿         d4   61  ->      e6   38  38 (sin multiplicar)
+  19...fxe6  Negras   P x C         f7   12  ->      e6   38  12x38=456
+  26...exf5  Negras   P x P         e6   38  ->      f5   60  38x60=2280
+  27.Rxf5    Blancas  T x P         f1   16  ->      f5   60  60 (sin multiplicar)
+  38.Rxf6    Blancas  T x C         f5   60  ->      f6   25  25 (sin multiplicar)
+  38...gxf6  Negras   P x T         g7   37  ->      f6   25  25 (sin multiplicar)
+  39.Rxf6    Blancas  T x P         f3   64  ->      f6   25  25 (sin multiplicar)
+  RESUMEN: 15 capturas - 6 multiplicaciones - 0 productos repetidos sin sumar - suma de productos 12714
+  HUELLA (productos distintos): 3132-2052-3111-1683-456-2280
+  ------------------------------------------------------------------------------
+
+TABLA GENERAL POR PARTIDA
+  RONDA  CAPTURAS  MULT.  SUMA  HUELLA NUMERICA
+  ------------------------------------------------------------------------------
+      6        15      6  12714  3132-2052-3111-1683-456-2280
+
+TABLA DE AGRUPACION - QUE NUMERO APARECE EN QUE PARTIDA
+  CASILLA  NUMERO  PARTIDAS
+  ------------------------------------------------------------------------------
+    e6         38  6
+    c5         51  6
+    d5         54  6
+    f5         60  6
+  Distintos numeros multiplicados: 4 de 64
