@@ -186,7 +186,12 @@
 
   function mejorUci(){
     try{
-      if(!window.buscarRaiz || !hayTablero()) return null;
+      if(!hayTablero()) return null;
+      if(window.jugadaLibro){
+        var lib = jugadaLibro(UI.motor.pos);
+        if(lib) return lib;
+      }
+      if(!window.buscarRaiz) return null;
       var r = buscarRaiz(UI.motor.pos, 4, {fecha:Date.now(),nodos:0,paso:4096,mejor:null}, false);
       return (r && r.mov) ? r.mov.uci : null;
     }catch(e){ return null; }

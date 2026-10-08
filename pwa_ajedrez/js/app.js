@@ -471,7 +471,12 @@ function responderIA() {
   setTimeout(function () {
     var uci = null;
     try {
-      uci = mover(UI.motor, UI.nivel);
+      if (window.jugadaLibro && UI.motor.pos.jugada <= 6) {
+        uci = jugadaLibro(UI.motor.pos);
+      }
+    } catch (e) { uci = null; }
+    try {
+      if (!uci) uci = mover(UI.motor, UI.nivel);
     } catch (e) {
       uci = null;
     }
