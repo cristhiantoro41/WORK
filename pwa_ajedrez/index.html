@@ -120,6 +120,21 @@
     </div>
 
     <p class="leyenda">PeÃ³n = nÃºmero de su casilla Â· " = caballo Â· Â¿ = alfil Â· T = torre Â· D = dama Â· R = rey Â· Las piezas negras van en disco oscuro.</p>
+    <div class="panel-pestana" id="panel-chat">
+      <div class="chat-contenedor">
+        <div class="chat-header">
+          <h3>Chat de Ajedrez (IA local)</h3>
+          <button class="btn btn-chico" id="btn-limpiar-chat">Limpiar</button>
+        </div>
+        <div class="chat-mensajes" id="chat-mensajes"></div>
+        <div class="chat-sugerencias" id="chat-sugerencias"></div>
+        <div class="chat-entrada">
+          <input id="chat-input" type="text" placeholder="Pregunta: mejor jugada, explica posición..." autocomplete="off">
+          <button class="btn btn-primario" id="btn-enviar-chat">Enviar</button>
+        </div>
+        <p class="chat-nota">Chat 100% offline.</p>
+      </div>
+    </div>
   </aside>
 </main>
 
@@ -155,6 +170,8 @@
 <script src="./js/app.js"></script>
 </body>
 </html>
+
+
 
 
 
