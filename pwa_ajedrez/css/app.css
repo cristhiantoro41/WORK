@@ -546,6 +546,29 @@ select:focus, input:focus { outline: none; border-color: var(--acento); }
 .historial .txt { color: var(--texto-alto); font-weight: 600; }
 .historial .txt.mul { color: var(--acento); }
 .historial li:last-child .txt { color: #d8e8c8; }
+.historial li.item-jugada { cursor: pointer; }
+.historial li.item-jugada.viendo { background: rgba(129, 182, 76, 0.22); box-shadow: inset 0 0 0 1px var(--acento); }
+
+.revision-barra {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.rev-info { margin-left: auto; font-size: 12px; color: var(--texto-tenue); }
+.btn-mini {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--borde);
+  background: var(--panel2);
+  color: var(--texto-alto);
+  cursor: pointer;
+}
+.btn-mini:hover { border-color: var(--acento); }
+.btn-mini:active { transform: translateY(1px); }
 
 .capturadas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .columna-capturas { min-width: 0; }

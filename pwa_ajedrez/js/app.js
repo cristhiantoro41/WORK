@@ -25,6 +25,9 @@ var UI = {
   ocultarOrigen: null,
   relojes: { blancas: 600, negras: 600 },
   eval: 0,
+  revision: null,
+  vista: null,
+  fens: [],
   tick: null,
   relojArrancado: false
 };
@@ -132,11 +135,22 @@ function esFin(estado) {
 }
 
 function esTurnoHumano() {
-  return !UI.fin && !UI.pensando && UI.motor.turno === UI.humanoEsBlancas;
+  return UI.revision === null && !UI.fin && !UI.pensando && UI.motor.turno === UI.humanoEsBlancas;
 }
 
 function esTurnoIA() {
-  return !UI.fin && !UI.pensando && UI.motor.turno !== UI.humanoEsBlancas;
+  return UI.revision === null && !UI.fin && !UI.pensando && UI.motor.turno !== UI.humanoEsBlancas;
+}
+
+function motorVista() {
+  return (UI.revision !== null && UI.vista) ? UI.vista : UI.motor;
+}
+
+function ultimoVista() {
+  if (UI.revision === null) return UI.ultimo;
+  if (UI.revision <= 0) return null;
+  var j = UI.jugadas[UI.revision - 1];
+  return j ? j.mov : null;
 }
 
 function vert(fila, col) {
@@ -185,13 +199,17 @@ function render() {
   renderBotones();
   renderJugadores();
   renderEval();
+  renderRevision();
 }
 
 function renderTablero() {
   var t = id('tablero');
   var html = '';
-  var enJaque = UI.motor.es_jaque();
-  var reyJaque = enJaque ? UI.motor.pos.casillaRey(UI.motor.turno) : null;
+  var vista = motorVista();
+  var enJaque = vista.es_jaque();
+  var reyJaque = enJaque ? vista.pos.casillaRey(vista.turno) : null;
+  var ultimo = ultimoVista();
+  var vivo = UI.revision === null;
   var letras = 'abcdefgh';
 
   for (var vr = 0; vr < 8; vr++) {
@@ -200,15 +218,15 @@ function renderTablero() {
       var fila = par[0];
       var col = par[1];
       var casilla = fila + ',' + col;
-      var pieza = UI.motor.tablero[fila][col];
+      var pieza = vista.tablero[fila][col];
       var claro = (fila + col) % 2 === 0;
       var clases = ['casilla', claro ? 'claro' : 'oscuro'];
 
-      if (UI.ultimo && (UI.ultimo.origen[0] === fila && UI.ultimo.origen[1] === col ||
-                        UI.ultimo.destino[0] === fila && UI.ultimo.destino[1] === col)) {
+      if (ultimo && (ultimo.origen[0] === fila && ultimo.origen[1] === col ||
+                     ultimo.destino[0] === fila && ultimo.destino[1] === col)) {
         clases.push('ultimo');
       }
-      if (UI.seleccion && UI.seleccion[0] === fila && UI.seleccion[1] === col) {
+      if (vivo && UI.seleccion && UI.seleccion[0] === fila && UI.seleccion[1] === col) {
         clases.push('seleccion');
       }
       if (reyJaque && reyJaque[0] === fila && reyJaque[1] === col) clases.push('jaque');
@@ -218,11 +236,11 @@ function renderTablero() {
       if (vr === 7) html += '<span class="coord coord-file">' + letras[col] + '</span>';
       if (vc === 0) html += '<span class="coord coord-rank">' + (8 - fila) + '</span>';
 
-      if (pieza === '.' || UI.numeros || (UI.ocultarOrigen && UI.ocultarOrigen[0] === fila && UI.ocultarOrigen[1] === col)) {
+      if (pieza === '.' || UI.numeros || (vivo && UI.ocultarOrigen && UI.ocultarOrigen[0] === fila && UI.ocultarOrigen[1] === col)) {
         html += '<span class="num-casilla">' + NUMEROS[letras[col] + (8 - fila)] + '</span>';
       }
 
-      var oculta = UI.ocultarOrigen && UI.ocultarOrigen[0] === fila && UI.ocultarOrigen[1] === col;
+      var oculta = vivo && UI.ocultarOrigen && UI.ocultarOrigen[0] === fila && UI.ocultarOrigen[1] === col;
       if (pieza !== '.' && !oculta) {
         var etiquetaTexto = etiqueta(pieza, letras[col] + (8 - fila));
         var blanca = esBlanca(pieza);
@@ -233,11 +251,13 @@ function renderTablero() {
           (esRey ? '<img src="./imagenes/rey.webp" alt="Rey">' : etiquetaTexto) + '</div>';
       }
 
-      for (var d = 0; d < UI.destinos.length; d++) {
-        var m = UI.destinos[d];
-        if (m.destino[0] === fila && m.destino[1] === col) {
-          var ocupada = UI.motor.tablero[fila][col] !== '.' || m.enPasante;
-          html += '<span class="marcador' + (ocupada ? ' anillo' : '') + '"></span>';
+      if (vivo) {
+        for (var d = 0; d < UI.destinos.length; d++) {
+          var m = UI.destinos[d];
+          if (m.destino[0] === fila && m.destino[1] === col) {
+            var ocupada = vista.tablero[fila][col] !== '.' || m.enPasante;
+            html += '<span class="marcador' + (ocupada ? ' anillo' : '') + '"></span>';
+          }
         }
       }
 
@@ -256,7 +276,9 @@ function renderHistorial() {
     for (var i = 0; i < UI.jugadas.length; i++) {
       var j = UI.jugadas[i];
       var clase = j.captura && j.captura.producto !== null && !j.captura.repetido ? ' class="mul"' : '';
-      html += '<li><span class="num">' + j.rotulo + '</span>' +
+      var viendo = UI.revision === i + 1 ? ' viendo' : '';
+      html += '<li class="item-jugada' + viendo + '" data-ply="' + (i + 1) + '">' +
+        '<span class="num">' + j.rotulo + '</span>' +
         '<span class="txt"' + clase + '>' + j.texto + '</span></li>';
     }
     ol.innerHTML = html;
@@ -355,10 +377,11 @@ function renderJugadores() {
   if (nomBot) nomBot.textContent = 'Vos';
 }
 
-function actualizarEval() {
+function actualizarEval(motor) {
+  var eng = motor || UI.motor;
   try {
-    if (!UI.motor || !UI.motor.pos) { UI.eval = 0; return; }
-    var pos = UI.motor.pos;
+    if (!eng || !eng.pos) { UI.eval = 0; return; }
+    var pos = eng.pos;
     var movs = pos.movimientosLegales();
     if (!movs.length) {
       UI.eval = pos.enJaque(pos.turno) ? (pos.turno ? -1e8 : 1e8) : 0;
@@ -372,7 +395,7 @@ function actualizarEval() {
       UI.eval = evaluar(pos);
     }
   } catch (e) {
-    UI.eval = (UI.motor && UI.motor.pos) ? evaluar(UI.motor.pos) : 0;
+    UI.eval = (eng && eng.pos) ? evaluar(eng.pos) : 0;
   }
 }
 
@@ -393,6 +416,47 @@ function renderEval() {
     num.textContent = (v >= 0 ? '+' : '') + (v / 100).toFixed(2);
   }
   if (barra) barra.classList.toggle('mate', mate);
+}
+
+function renderRevision() {
+  var barra = id('revision-barra');
+  if (!barra) return;
+  if (UI.revision === null) { barra.hidden = true; return; }
+  barra.hidden = false;
+  var info = id('rev-info');
+  if (info) {
+    if (UI.revision === 0) info.textContent = 'Posicion inicial';
+    else info.textContent = 'Jugada ' + UI.revision + ' de ' + UI.jugadas.length;
+  }
+}
+
+function entrarRevision(k) {
+  if (!UI.fens.length) return;
+  var total = UI.jugadas.length;
+  if (k < 0) k = 0;
+  if (k > total) k = total;
+  if (k === total) { salirRevision(); return; }
+  UI.revision = k;
+  UI.vista = new Engine(UI.fens[k]);
+  UI.seleccion = null;
+  UI.destinos = [];
+  detenerReloj();
+  actualizarEval(UI.vista);
+  render();
+}
+
+function salirRevision() {
+  if (UI.revision === null) return;
+  UI.revision = null;
+  UI.vista = null;
+  actualizarEval();
+  if (UI.reloj && !UI.fin) arrancarReloj();
+  render();
+}
+
+function moverRevision(delta) {
+  var base = UI.revision === null ? UI.jugadas.length : UI.revision;
+  entrarRevision(base + delta);
 }
 
 function pintarRelojes() {
@@ -507,6 +571,7 @@ function aplicarMov(mov) {
     captura: captura,
     texto: textoJugada(aplicado, atacante, victima, captura)
   });
+  UI.fens.push(t.a_fen());
   UI.ultimo = aplicado;
   UI.seleccion = null;
   UI.destinos = [];
@@ -576,11 +641,13 @@ function quitarJugada() {
   var j = UI.jugadas.pop();
   if (!j) return false;
   UI.motor.deshacer();
+  UI.fens.pop();
   if (j.captura) UI.capturas.pop();
   return true;
 }
 
 function deshacer() {
+  if (UI.revision !== null) { salirRevision(); return; }
   if (UI.pensando || !UI.jugadas.length) return;
   quitarJugada();
   if (UI.motor.turno !== UI.humanoEsBlancas && UI.jugadas.length) quitarJugada();
@@ -602,6 +669,9 @@ function nuevaPartida() {
   UI.motor = new Engine();
   UI.jugadas = [];
   UI.capturas = [];
+  UI.fens = [UI.motor.a_fen()];
+  UI.revision = null;
+  UI.vista = null;
   UI.ultimo = null;
   UI.seleccion = null;
   UI.destinos = [];
@@ -851,6 +921,28 @@ function configurarEventos() {
     }
     render();
   });
+
+  var hist = id('historial');
+  if (hist) {
+    hist.addEventListener('click', function (ev) {
+      var el = ev.target;
+      while (el && el !== hist && (!el.classList || !el.classList.contains('item-jugada'))) {
+        el = el.parentNode;
+      }
+      if (!el || el === hist) return;
+      var k = parseInt(el.getAttribute('data-ply'), 10);
+      if (!isNaN(k)) entrarRevision(k);
+    });
+  }
+
+  var revInicio = id('rev-inicio');
+  if (revInicio) revInicio.addEventListener('click', function () { entrarRevision(0); });
+  var revAnt = id('rev-ant');
+  if (revAnt) revAnt.addEventListener('click', function () { moverRevision(-1); });
+  var revSig = id('rev-sig');
+  if (revSig) revSig.addEventListener('click', function () { moverRevision(1); });
+  var revVolver = id('rev-volver');
+  if (revVolver) revVolver.addEventListener('click', salirRevision);
 }
 
 /* --------------------------------------------------------------- controles */
@@ -1033,10 +1125,18 @@ function iniciar() {
       id('modal-promocion').hidden = true;
       id('modal-fin').hidden = true;
       pendientePromocion = null;
+      if (UI.revision !== null) salirRevision();
+      return;
+    }
+    var tag = ev.target && ev.target.tagName;
+    if (UI.revision !== null && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      if (ev.key === 'ArrowLeft') { moverRevision(-1); ev.preventDefault(); return; }
+      if (ev.key === 'ArrowRight') { moverRevision(1); ev.preventDefault(); return; }
     }
   });
 
   UI.invertido = !UI.humanoEsBlancas;
+  UI.fens = [UI.motor.a_fen()];
   actualizarEval();
   render();
 }
