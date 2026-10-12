@@ -250,6 +250,32 @@ var FEN_INICIO = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
   comprobar('perft(3) inicial === 8902 (igual que motor.py)', p3 === 8902);
 })();
 
+/* ============================================================== ANALISIS */
+
+(function () {
+  var e = new Engine(FEN_INICIO);
+  var legales = e.pos.movimientosLegales().map(function (m) { return m.uci; });
+  var res = analizar(e.pos, { ms: 1000, profundidad: 8 });
+  comprobar('analisis: devuelve una mejor jugada legal',
+    res.mejor !== null && legales.indexOf(res.mejor.uci) >= 0);
+  comprobar('analisis: profundidad alcanzada >= 2', res.profundidad >= 2);
+  comprobar('analisis: hay candidatas', res.candidatas.length > 0);
+
+  var e2 = new Engine(FEN_INICIO);
+  var jugable = true;
+  for (var i = 0; i < res.linea.length; i++) {
+    if (e2.aplicar(res.linea[i]) === null) { jugable = false; break; }
+  }
+  comprobar('analisis: la linea principal es jugable', res.linea.length > 0 && jugable);
+})();
+
+(function () {
+  var e = new Engine('7k/5R2/6K1/8/8/8/8/8 w - - 0 1');
+  var res = analizar(e.pos, { ms: 1200, profundidad: 10 });
+  comprobar('analisis: encuentra mate en 1 -> f7f8', res.mejor !== null && res.mejor.uci === 'f7f8');
+  comprobar('analisis: puntaje de mate', res.puntaje > 90000000);
+})();
+
 /* ================================================================= RESUMEN */
 
 (function () {

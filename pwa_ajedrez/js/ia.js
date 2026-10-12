@@ -81,6 +81,14 @@ function moverIA(motor, nivel, tiempoMaximo) {
   var estado = { fecha: fecha, nodos: 0, paso: 2048 };
   var movimiento = null;
 
+  /* Elite: usa el analisis con mejor ordenamiento (killer/history) si esta. */
+  if (cfg.iterativa && typeof analizar === 'function') {
+    try {
+      var an = analizar(pos, { ms: tiempoMaximo || cfg.tiempo || 1200, profundidad: cfg.prof || 10 });
+      if (an && an.mejor) return an.mejor.uci;
+    } catch (eAn) { /* cae al metodo clasico */ }
+  }
+
   if (cfg.error > 0) {
     var valores;
     try {

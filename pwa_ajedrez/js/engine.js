@@ -553,59 +553,139 @@ var INF = 100000000;
 
 var VALORES_PIEZAS = { P: 100, N: 320, B: 330, R: 500, Q: 950, K: 0 };
 
-var VALOR_PIEZA = {};
-var BONO_CENTRO_PIEZA = {};
-var BONO_TIPO = { P: 1, N: 3, B: 3, R: 0, Q: 0, K: 0 };
-Object.keys(VALORES_PIEZAS).forEach(function (tipo) {
-  var valor = VALORES_PIEZAS[tipo];
-  VALOR_PIEZA[tipo] = valor;
-  VALOR_PIEZA[tipo.toLowerCase()] = -valor;
-  BONO_CENTRO_PIEZA[tipo] = BONO_TIPO[tipo];
-  BONO_CENTRO_PIEZA[tipo.toLowerCase()] = -BONO_TIPO[tipo];
-});
+/* Bono por tener el turno (evita tablas por simetria). */
+var TEMPO = 14;
 
-var BONO_CENTRO = [
-  [0, 0, 1, 2, 2, 1, 0, 0],
-  [0, 2, 3, 4, 4, 3, 2, 0],
-  [1, 3, 4, 5, 5, 4, 3, 1],
-  [2, 4, 5, 6, 6, 5, 4, 2],
-  [2, 4, 5, 6, 6, 5, 4, 2],
-  [1, 3, 4, 5, 5, 4, 3, 1],
-  [0, 2, 3, 4, 4, 3, 2, 0],
-  [0, 0, 1, 2, 2, 1, 0, 0]
+/* Tablas posicionales (PST) desde la perspectiva de las blancas.
+ * Indice = fila * 8 + col, con fila 0 = fila 8 (la del fondo blanco). */
+var PST = {
+  P: [
+    0, 0, 0, 0, 0, 0, 0, 0,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    10, 10, 20, 30, 30, 20, 10, 10,
+    5, 5, 10, 25, 25, 10, 5, 5,
+    0, 0, 0, 20, 20, 0, 0, 0,
+    5, -5, -10, 0, 0, -10, -5, 5,
+    5, 10, 10, -20, -20, 10, 10, 5,
+    0, 0, 0, 0, 0, 0, 0, 0
+  ],
+  N: [
+    -50, -40, -30, -30, -30, -30, -40, -50,
+    -40, -20, 0, 0, 0, 0, -20, -40,
+    -30, 0, 10, 15, 15, 10, 0, -30,
+    -30, 5, 15, 20, 20, 15, 5, -30,
+    -30, 0, 15, 20, 20, 15, 0, -30,
+    -30, 5, 10, 15, 15, 10, 5, -30,
+    -40, -20, 0, 5, 5, 0, -20, -40,
+    -50, -40, -30, -30, -30, -30, -40, -50
+  ],
+  B: [
+    -20, -10, -10, -10, -10, -10, -10, -20,
+    -10, 0, 0, 0, 0, 0, 0, -10,
+    -10, 0, 5, 10, 10, 5, 0, -10,
+    -10, 5, 5, 10, 10, 5, 5, -10,
+    -10, 0, 10, 10, 10, 10, 0, -10,
+    -10, 10, 10, 10, 10, 10, 10, -10,
+    -10, 5, 0, 0, 0, 0, 5, -10,
+    -20, -10, -10, -10, -10, -10, -10, -20
+  ],
+  R: [
+    0, 0, 0, 0, 0, 0, 0, 0,
+    5, 10, 10, 10, 10, 10, 10, 5,
+    -5, 0, 0, 0, 0, 0, 0, -5,
+    -5, 0, 0, 0, 0, 0, 0, -5,
+    -5, 0, 0, 0, 0, 0, 0, -5,
+    -5, 0, 0, 0, 0, 0, 0, -5,
+    -5, 0, 0, 0, 0, 0, 0, -5,
+    0, 0, 0, 5, 5, 0, 0, 0
+  ],
+  Q: [
+    -20, -10, -10, -5, -5, -10, -10, -20,
+    -10, 0, 0, 0, 0, 0, 0, -10,
+    -10, 0, 5, 5, 5, 5, 0, -10,
+    -5, 0, 5, 5, 5, 5, 0, -5,
+    0, 0, 5, 5, 5, 5, 0, -5,
+    -10, 5, 5, 5, 5, 5, 0, -10,
+    -10, 0, 5, 0, 0, 0, 0, -10,
+    -20, -10, -10, -5, -5, -10, -10, -20
+  ],
+  K: [
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -20, -30, -30, -40, -40, -30, -30, -20,
+    -10, -20, -20, -20, -20, -20, -20, -10,
+    20, 20, 0, 0, 0, 0, 20, 20,
+    20, 30, 10, 0, 0, 10, 30, 20
+  ]
+};
+
+/* El rey en el final busca el centro del tablero. */
+var PST_REY_FINAL = [
+  -50, -40, -30, -20, -20, -30, -40, -50,
+  -30, -20, -10, 0, 0, -10, -20, -30,
+  -30, -10, 20, 30, 30, 20, -10, -30,
+  -30, -10, 30, 40, 40, 30, -10, -30,
+  -30, -10, 30, 40, 40, 30, -10, -30,
+  -30, -10, 20, 30, 30, 20, -10, -30,
+  -30, -30, 0, 0, 0, 0, -30, -30,
+  -50, -30, -30, -30, -30, -30, -30, -50
 ];
 
+/* Cuadratura mas material (de jugada forzada minima cuando hay tablas). */
 function evaluar(posicion) {
-  var total = 0;
+  var damas = 0, torres = 0, menores = 0;
+  var tablero = posicion.tablero;
   for (var fila = 0; fila < 8; fila++) {
-    var linea = posicion.tablero[fila];
-    var bono = BONO_CENTRO[fila];
     for (var col = 0; col < 8; col++) {
-      var pieza = linea[col];
+      var pieza = tablero[fila][col];
       if (pieza === VACIA) continue;
-      total += VALOR_PIEZA[pieza] + BONO_CENTRO_PIEZA[pieza] * bono[col];
+      var tipo = (pieza === pieza.toUpperCase() ? pieza : pieza.toUpperCase());
+      if (tipo === 'Q') damas++;
+      else if (tipo === 'R') torres++;
+      else if (tipo === 'N' || tipo === 'B') menores++;
+    }
+  }
+  var final = damas === 0 && (torres + menores) <= 5;
+  var tablaRey = final ? PST_REY_FINAL : PST['K'];
+
+  var total = 0;
+  for (var f = 0; f < 8; f++) {
+    for (var c = 0; c < 8; c++) {
+      var p = tablero[f][c];
+      if (p === VACIA) continue;
+      var tipo2 = (p === p.toUpperCase() ? p : p.toUpperCase());
+      var pst = (tipo2 === 'K') ? tablaRey : PST[tipo2];
+      if (p === p.toUpperCase()) {
+        total += VALORES_PIEZAS[tipo2] + pst[f * 8 + c];
+      } else {
+        total -= VALORES_PIEZAS[tipo2] + pst[(7 - f) * 8 + c];
+      }
     }
   }
   return total;
 }
 
-function ordenar(movimientos, posicion) {
-  return movimientos.slice().sort(function (a, b) {
-    return clave(b, posicion) - clave(a, posicion);
-  });
-
-  function clave(movimiento, pos) {
-    var victima = pos.tablero[movimiento.destino[0]][movimiento.destino[1]];
-    var atacante = pos.tablero[movimiento.origen[0]][movimiento.origen[1]];
-    if (victima !== VACIA) {
-      return VALORES_PIEZAS[victima.toUpperCase()] * 10 - VALORES_PIEZAS[atacante.toUpperCase()];
-    }
-    return movimiento.promocion ? 1000 : 0;
-  }
+/* Clave de ordenacion: capturas MVV-LVA y promociones primero. */
+function claveOrden(movimiento, posicion) {
+  var victima = posicion.tablero[movimiento.destino[0]][movimiento.destino[1]];
+  var atacante = posicion.tablero[movimiento.origen[0]][movimiento.origen[1]];
+  var a = atacante === VACIA ? 0 : VALORES_PIEZAS[atacante.toUpperCase()];
+  var v = 0;
+  if (victima !== VACIA) v = VALORES_PIEZAS[victima.toUpperCase()] * 10 - a;
+  if (movimiento.promocion) v += 1000 + VALORES_PIEZAS[movimiento.promocion.toUpperCase()];
+  return v;
 }
 
-/* `estado` es opcional: {fecha, nodos, paso} para el limite de tiempo. */
-function alfabeta(posicion, profundidad, alfa, beta, estado) {
+function ordenar(movimientos, posicion) {
+  return movimientos.slice().sort(function (a, b) {
+    return claveOrden(b, posicion) - claveOrden(a, posicion);
+  });
+}
+
+/* Deteccion del tiempo agotado (misma logica para busqueda y quiescencia). */
+function comprobar_tiempo(estado) {
   if (estado) {
     estado.nodos++;
     if (estado.nodos >= estado.paso) {
@@ -617,13 +697,98 @@ function alfabeta(posicion, profundidad, alfa, beta, estado) {
       }
     }
   }
+}
+
+/* Busqueda de quiescencia: en casillas "tranquilas" busca capturas y
+ * promociones para quitar el efecto horizonte, y en jaque busca todas las
+ * evasiones (asi detecta mates y no cae en intercambios mal evaluados). */
+function quiescencia(posicion, alfa, beta, estado) {
+  comprobar_tiempo(estado);
+
+  var enJaqueAhora = posicion.enJaque(posicion.turno);
+  var movimientos = posicion.movimientosLegales();
+  if (!movimientos.length) {
+    if (!enJaqueAhora) return 0;
+    return posicion.turno ? -INF + posicion.jugada : INF - posicion.jugada;
+  }
+
+  if (enJaqueAhora) {
+    /* Todas las evasiones: una semi-jugada completa hasta evaluar. */
+    movimientos = ordenar(movimientos, posicion);
+    if (posicion.turno) {
+      var mejor = -INF;
+      for (var i = 0; i < movimientos.length; i++) {
+        posicion.aplicar(movimientos[i]);
+        var valor = evaluar(posicion) + TEMPO;
+        posicion.deshacer();
+        if (valor > mejor) mejor = valor;
+        if (mejor > alfa) alfa = mejor;
+        if (beta <= alfa) break;
+      }
+      return mejor;
+    }
+    var peor = INF;
+    for (var j = 0; j < movimientos.length; j++) {
+      posicion.aplicar(movimientos[j]);
+      var valor2 = evaluar(posicion) - TEMPO;
+      posicion.deshacer();
+      if (valor2 < peor) peor = valor2;
+      if (peor < beta) beta = peor;
+      if (beta <= alfa) break;
+    }
+    return peor;
+  }
+
+  var quietud = evaluar(posicion) + (posicion.turno ? TEMPO : -TEMPO);
+
+  var capturas = [];
+  for (var k = 0; k < movimientos.length; k++) {
+    var m = movimientos[k];
+    if (m.promocion || posicion.tablero[m.destino[0]][m.destino[1]] !== VACIA) {
+      capturas.push(m);
+    }
+  }
+  capturas = ordenar(capturas, posicion);
+
+  if (posicion.turno) {
+    /* Maximizador: el "stand pat" es quietud y las capturas solo pueden subir. */
+    var mejor = quietud;
+    for (var c = 0; c < capturas.length; c++) {
+      posicion.aplicar(capturas[c]);
+      var v = quiescencia(posicion, alfa, beta, estado);
+      posicion.deshacer();
+      if (v > mejor) mejor = v;
+      if (mejor > alfa) alfa = mejor;
+      if (beta <= alfa) break;
+    }
+    return mejor;
+  }
+
+  /* Minimizador: el "stand pat" es quietud y las capturas solo pueden bajar. */
+  var peor = quietud;
+  for (var c2 = 0; c2 < capturas.length; c2++) {
+    posicion.aplicar(capturas[c2]);
+    var v2 = quiescencia(posicion, alfa, beta, estado);
+    posicion.deshacer();
+    if (v2 < peor) peor = v2;
+    if (peor < beta) beta = peor;
+    if (beta <= alfa) break;
+  }
+  return peor;
+}
+
+/* `estado` es opcional: {fecha, nodos, paso} para el limite de tiempo.
+ * En profundidad 0 no genera todas las jugadas: delega en la quiescencia. */
+function alfabeta(posicion, profundidad, alfa, beta, estado) {
+  comprobar_tiempo(estado);
+
+  if (profundidad <= 0) return quiescencia(posicion, alfa, beta, estado);
 
   var movimientos = posicion.movimientosLegales();
   if (!movimientos.length) {
     if (!posicion.enJaque(posicion.turno)) return 0;
     return posicion.turno ? -INF + posicion.jugada : INF - posicion.jugada;
   }
-  if (profundidad === 0) return evaluar(posicion);
 
   movimientos = ordenar(movimientos, posicion);
 
@@ -662,11 +827,23 @@ function alfabeta(posicion, profundidad, alfa, beta, estado) {
   return mejor2;
 }
 
-/* Mejor jugada de una sola pasada a `profundidad`. Lanza error.tiempo si se agota. */
+/* Mejor jugada de una sola pasada a `profundidad`. Lanza error.tiempo si se
+ * agota. `estado.mejor` (Movimiento) se coloca primero si viene de la
+ * iteracion anterior de una busqueda iterativa. */
 function buscarRaiz(posicion, profundidad, estado, fuerte) {
   var movimientos = posicion.movimientosLegales();
   if (!movimientos.length) return null;
   movimientos = ordenar(movimientos, posicion);
+
+  if (estado && estado.mejor) {
+    for (var p = 0; p < movimientos.length; p++) {
+      if (movimientos[p].uci === estado.mejor.uci) {
+        var previo = movimientos.splice(p, 1)[0];
+        movimientos.unshift(previo);
+        break;
+      }
+    }
+  }
 
   var alfa = -INF;
   var beta = INF;
@@ -721,9 +898,176 @@ function valoresRaiz(posicion, profundidad, estado) {
 
 function mejorJugada(posicion, profundidad, opciones) {
   var op = opciones || {};
-  var estado = { fecha: op.fecha || 0, nodos: 0, paso: 2048 };
+  var estado = { fecha: op.fecha || 0, nodos: 0, paso: 2048, mejor: null };
   var res = buscarRaiz(posicion, profundidad, estado, op.fuerte);
   return res ? res.mov : null;
+}
+
+/* -------------------------------------------- analisis profundo (asistente) */
+
+/* Clave numerica barata de un movimiento (para killer/history). */
+function _movKey(m) {
+  var o = m.origen[0] * 8 + m.origen[1];
+  var d = m.destino[0] * 8 + m.destino[1];
+  var p = m.promocion ? (m.promocion.toLowerCase().charCodeAt(0) - 96) : 0;
+  return (o * 64 + d) * 5 + p;
+}
+
+function _pesoMov(m, k0, k1, tablero, history) {
+  var victima = tablero[m.destino[0]][m.destino[1]];
+  var atacante = tablero[m.origen[0]][m.origen[1]];
+  var a = atacante === VACIA ? 0 : VALORES_PIEZAS[atacante.toUpperCase()];
+  var v = 0;
+  if (victima !== VACIA) v = VALORES_PIEZAS[victima.toUpperCase()] * 10 - a;
+  if (m.promocion) v += 1000 + VALORES_PIEZAS[m.promocion.toUpperCase()];
+  if (v === 0) {
+    var k = _movKey(m);
+    if (k === k0) v = 950;
+    else if (k === k1) v = 900;
+    else v = history[k] || 0;
+  }
+  return v;
+}
+
+function _ordenarCon(movimientos, posicion, killers, history) {
+  var arr = movimientos.slice();
+  var k0 = killers[0], k1 = killers[1], t = posicion.tablero;
+  arr.sort(function (x, y) {
+    return _pesoMov(y, k0, k1, t, history) - _pesoMov(x, k0, k1, t, history);
+  });
+  return arr;
+}
+
+/* Alfa-beta con linea principal (pv triangular) y heuristica killer/history. */
+function _alfabetaPV(posicion, profundidad, alfa, beta, estado, ply, pv, killers, history) {
+  comprobar_tiempo(estado);
+  if (!pv[ply]) pv[ply] = [];
+  pv[ply].length = 0;
+
+  if (profundidad <= 0) return quiescencia(posicion, alfa, beta, estado);
+
+  var movimientos = posicion.movimientosLegales();
+  if (!movimientos.length) {
+    if (!posicion.enJaque(posicion.turno)) return 0;
+    return posicion.turno ? -INF + posicion.jugada : INF - posicion.jugada;
+  }
+  movimientos = _ordenarCon(movimientos, posicion, killers, history);
+
+  if (posicion.turno) {
+    var mejor = -INF;
+    for (var i = 0; i < movimientos.length; i++) {
+      var m = movimientos[i];
+      posicion.aplicar(m);
+      var v;
+      try {
+        v = _alfabetaPV(posicion, profundidad - 1, alfa, beta, estado, ply + 1, pv, killers, history);
+      } finally {
+        posicion.deshacer();
+      }
+      if (v > mejor) {
+        mejor = v;
+        pv[ply][0] = m;
+        var hijo = pv[ply + 1];
+        for (var z = 0; hijo && z < hijo.length; z++) pv[ply][z + 1] = hijo[z];
+        pv[ply].length = 1 + (hijo ? hijo.length : 0);
+      }
+      if (mejor > alfa) alfa = mejor;
+      if (beta <= alfa) {
+        if (posicion.tablero[m.destino[0]][m.destino[1]] === VACIA && !m.promocion) {
+          var kk = _movKey(m);
+          if (killers[0] !== kk) { killers[1] = killers[0]; killers[0] = kk; }
+          history[kk] = (history[kk] || 0) + profundidad * profundidad;
+        }
+        break;
+      }
+    }
+    return mejor;
+  }
+
+  var peor = INF;
+  for (var j = 0; j < movimientos.length; j++) {
+    var m2 = movimientos[j];
+    posicion.aplicar(m2);
+    var v2;
+    try {
+      v2 = _alfabetaPV(posicion, profundidad - 1, alfa, beta, estado, ply + 1, pv, killers, history);
+    } finally {
+      posicion.deshacer();
+    }
+    if (v2 < peor) {
+      peor = v2;
+      pv[ply][0] = m2;
+      var hijo2 = pv[ply + 1];
+      for (var z2 = 0; hijo2 && z2 < hijo2.length; z2++) pv[ply][z2 + 1] = hijo2[z2];
+      pv[ply].length = 1 + (hijo2 ? hijo2.length : 0);
+    }
+    if (peor < beta) beta = peor;
+    if (beta <= alfa) break;
+  }
+  return peor;
+}
+
+/* Analisis con profundizacion iterativa, limite de tiempo y linea principal.
+ * Devuelve {mejor, puntaje, profundidad, linea:[uci...], candidatas:[{mov,valor}]}. */
+function analizar(posicion, opciones) {
+  var op = opciones || {};
+  var maxProf = op.profundidad || 8;
+  var ms = op.ms || 1200;
+  var estado = { fecha: Date.now() + ms, nodos: 0, paso: 2048 };
+  var killers = [0, 0];
+  var history = {};
+
+  var mejor = null, mejorpuntaje = 0, profAlcanzada = 0, mejorLinea = [], candidatas = [];
+
+  for (var d = 1; d <= maxProf; d++) {
+    var movs = _ordenarCon(posicion.movimientosLegales(), posicion, killers, history);
+    if (!movs.length) break;
+    if (estado.fecha && Date.now() > estado.fecha) break;
+
+    var pv = [];
+    var alfa = -INF, beta = INF;
+    var valorMejor = posicion.turno ? -INF : INF;
+    var mejorMov = null, linea = [], listaRaiz = [], terminado = false;
+
+    try {
+      for (var i = 0; i < movs.length; i++) {
+        var m = movs[i];
+        posicion.aplicar(m);
+        var v;
+        try {
+          pv = [];
+          v = _alfabetaPV(posicion, d - 1, alfa, beta, estado, 0, pv, killers, history);
+        } finally {
+          posicion.deshacer();
+        }
+        listaRaiz.push({ mov: m, valor: v });
+        if (posicion.turno) {
+          if (v > valorMejor) { valorMejor = v; mejorMov = m; linea = [m].concat(pv[0] || []); }
+          if (valorMejor > alfa) alfa = valorMejor;
+        } else {
+          if (v < valorMejor) { valorMejor = v; mejorMov = m; linea = [m].concat(pv[0] || []); }
+          if (valorMejor < beta) beta = valorMejor;
+        }
+      }
+    } catch (e) {
+      if (e && e.tiempo) { terminado = true; } else { throw e; }
+    }
+    if (mejorMov && (!terminado || !mejor)) {
+      mejor = mejorMov;
+      mejorpuntaje = valorMejor;
+      profAlcanzada = d;
+      mejorLinea = linea;
+      candidatas = listaRaiz;
+    }
+    if (terminado) break;
+  }
+  return {
+    mejor: mejor,
+    puntaje: mejorpuntaje,
+    profundidad: profAlcanzada,
+    linea: mejorLinea.map(function (m) { return m.uci; }),
+    candidatas: candidatas
+  };
 }
 
 /* ------------------------------------------------------------- terminacion */
@@ -863,6 +1207,7 @@ if (typeof window !== 'undefined') {
   window.buscarRaiz = buscarRaiz;
   window.valoresRaiz = valoresRaiz;
   window.mejorJugada = mejorJugada;
+  window.analizar = analizar;
   window.terminacion = terminacion;
   window.claveRepeticion = claveRepeticion;
   window.perft = perft;

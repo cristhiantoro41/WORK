@@ -106,29 +106,71 @@
     return na+'-'+nb;
   }
 
+  /* puntaje del motor a texto: centipeones o mate */
+  function puntajeTexto(v){
+    var a = Math.abs(v);
+    if(a > 90000000){
+      var n = Math.ceil((100000000 - a)/2);
+      return (v>0 ? 'mate en '+n+' a favor' : 'mate en '+n+' en contra');
+    }
+    var p = v/100;
+    return (p>=0?'+':'')+p.toFixed(2);
+  }
+
+  /* una linea (lista de uci) a numeros: '44-56 12-34' */
+  function txtLinea(linea){
+    if(!linea || !linea.length) return '';
+    var out = [];
+    for(var i=0;i<linea.length;i++) out.push(txtUci(linea[i]));
+    return out.join(' ');
+  }
+
+  /* analisis profundo del motor: mejor + linea + candidatas */
+  function analizarProfundo(ms){
+    try{
+      if(!window.analizar || !hayTablero()) return null;
+      return analizar(UI.motor.pos, {ms: ms||1500, profundidad: 60});
+    }catch(e){ return null; }
+  }
+
+  function analisisTexto(){
+    var res = analizarProfundo(1500);
+    if(!res || !res.mejor) return 'x';
+    var signo = UI.motor.pos.turno ? 1 : -1; /* perspectiva de blancas */
+    var partes = [];
+    partes.push('Mejor '+txtUci(res.mejor.uci)+'  |  prof '+res.profundidad+'  |  eval '+puntajeTexto(res.puntaje*signo));
+    var linea = txtLinea(res.linea);
+    if(linea) partes.push('Línea: '+linea);
+    if(res.candidatas && res.candidatas.length){
+      var arr = res.candidatas.slice().sort(function(a,b){ return b.valor - a.valor; });
+      var ops = [], vistos = {};
+      for(var i=0;i<arr.length && ops.length<3;i++){
+        var f = formatoMov(arr[i].mov);
+        if(f && !vistos[f]){ vistos[f]=1; ops.push(f+' ('+puntajeTexto(arr[i].valor*signo)+')'); }
+      }
+      if(ops.length) partes.push('Opciones: '+ops.join(', '));
+    }
+    return partes.join('\n');
+  }
+
   /* opciones: mejores jugadas legales con sus numeros multiplicados */
   function opcionesTexto(cuantas){
     if(!hayTablero()) return 'x';
+    var res = analizarProfundo(1200);
+    if(res && res.candidatas && res.candidatas.length){
+      var arr = res.candidatas.slice().sort(function(a,b){ return b.valor - a.valor; });
+      var outO = [], vistosO = {};
+      for(var i=0;i<arr.length && outO.length<cuantas;i++){
+        var fO = formatoMov(arr[i].mov);
+        if(fO && !vistosO[fO]){ vistosO[fO]=1; outO.push(fO); }
+      }
+      if(outO.length) return outO.join(', ');
+    }
     var leg = legales();
     if(!leg.length) return 'x';
     var vistos = {}, out = [];
-    var orden = [];
-    try{
-      if(window.buscarRaiz){
-        var r = buscarRaiz(UI.motor.pos, 3, {fecha:Date.now(),nodos:0,paso:4096,mejor:null}, false);
-        if(r && r.mov) orden.push(r.mov);
-      }
-    }catch(e){}
-    for(var i=0;i<leg.length && out.length<cuantas;i++){
-      var cand = leg[i];
-      var ya = false;
-      for(var k=0;k<orden.length;k++){
-        if(orden[k].uci === cand.uci){ ya = true; break; }
-      }
-      if(!ya) orden.push(cand);
-    }
-    for(var j=0;j<orden.length && out.length<cuantas;j++){
-      var f = formatoMov(orden[j]);
+    for(var j=0;j<leg.length && out.length<cuantas;j++){
+      var f = formatoMov(leg[j]);
       if(f && !vistos[f]){ vistos[f]=1; out.push(f); }
     }
     return out.join(', ');
@@ -191,6 +233,8 @@
         var lib = jugadaLibro(UI.motor.pos);
         if(lib) return lib;
       }
+      var res = analizarProfundo(1200);
+      if(res && res.mejor) return res.mejor.uci;
       if(!window.buscarRaiz) return null;
       var r = buscarRaiz(UI.motor.pos, 4, {fecha:Date.now(),nodos:0,paso:4096,mejor:null}, false);
       return (r && r.mov) ? r.mov.uci : null;
@@ -363,14 +407,8 @@
       return opcionesTexto(3);
     }
 
-    if(/(mejor jugada|cual es la mejor|cuál es la mejor)/.test(p)){
-      var m = mejorUci();
-      if(!m) return 'x';
-      return decirUci(m);
-    }
-
-    if(/(analiza|análisis|explica|cómo voy|como voy|posición|posicion)/.test(p)){
-      return decirUci(mejorUci() || 'e2e4');
+    if(/(analiza|análisis|analisis|explica|profundiza|a fondo|mejor jugada|cual es la mejor|cuál es la mejor|cómo voy|como voy|posición|posicion)/.test(p)){
+      return analisisTexto();
     }
 
     if(/(que ves|qué ves|describe|tablero|material)/.test(p)){

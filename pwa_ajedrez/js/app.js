@@ -269,8 +269,8 @@ function renderHistorial() {
     if (c.color) blancas += chip;
     else negras += chip;
   }
-  id('fichas-blancas').innerHTML = blancas || '<span class="vacio">ÔÇö</span>';
-  id('fichas-negras').innerHTML = negras || '<span class="vacio">ÔÇö</span>';
+  id('fichas-blancas').innerHTML = blancas || '<span class="vacio">&mdash;</span>';
+  id('fichas-negras').innerHTML = negras || '<span class="vacio">&mdash;</span>';
 }
 
 function renderCapturas() {
@@ -328,8 +328,8 @@ function renderBotones() {
   id('btn-numeros').classList.toggle('activo', UI.numeros);
   id('btn-numeros-top').classList.toggle('activo', UI.numeros);
   id('btn-sonido').classList.toggle('activo', UI.sonido);
-  id('btn-numeros').textContent = UI.numeros ? 'Ocultar n├║meros 1-64' : 'Mostrar n├║meros 1-64';
-  id('btn-sonido2').textContent = 'Sonido: ' + (UI.sonido ? 's├¡' : 'no');
+  id('btn-numeros').textContent = UI.numeros ? 'Ocultar n\u00fameros 1-64' : 'Mostrar n\u00fameros 1-64';
+  id('btn-sonido2').textContent = 'Sonido: ' + (UI.sonido ? 's\u00ed' : 'no');
   id('btn-tema2').textContent = 'Tema: ' + UI.tema;
   id('relojes').hidden = !UI.reloj;
   pintarRelojes();
@@ -360,10 +360,14 @@ function formatoTiempo(segundos) {
 function arrancarReloj() {
   if (!UI.reloj || UI.tick) return;
   UI.relojArrancado = true;
+  UI.ultimoTick = Date.now();
   UI.tick = setInterval(function () {
     if (UI.fin) { detenerReloj(); return; }
+    var ahora = Date.now();
+    var dt = (ahora - UI.ultimoTick) / 1000;
+    UI.ultimoTick = ahora;
     var clave = UI.motor.turno ? 'blancas' : 'negras';
-    UI.relojes[clave] = Math.max(0, UI.relojes[clave] - 1);
+    UI.relojes[clave] = Math.max(0, UI.relojes[clave] - dt);
     if (UI.relojes[clave] <= 0) {
       detenerReloj();
       finPorTiempo(clave);
@@ -555,8 +559,8 @@ function mostrarFin() {
   id('fin-texto').textContent = UI.estado || 'La partida ha terminado.';
   var r = resumenCapturas(UI.capturas);
   id('fin-resumen').innerHTML =
-    'Capturas: <b>' + r.capturas + '</b> ┬À Multiplicaciones: <b>' + r.multiplicaciones +
-    '</b><br>Repetidos: <b>' + r.repetidos + '</b> ┬À Suma de productos: <b>' + r.suma + '</b>';
+    'Capturas: <b>' + r.capturas + '</b> \u00b7 Multiplicaciones: <b>' + r.multiplicaciones +
+    '</b><br>Repetidos: <b>' + r.repetidos + '</b> \u00b7 Suma de productos: <b>' + r.suma + '</b>';
   id('modal-fin').hidden = false;
 }
 
@@ -837,8 +841,10 @@ function cambiarPestana(destino) {
   document.querySelectorAll('.pestana').forEach(function (p) {
     p.classList.toggle('activa', p.dataset.destino === destino);
   });
-  id('panel-jugadas').classList.toggle('activo', destino === 'jugadas');
-  id('panel-capturas').classList.toggle('activo', destino === 'capturas');
+  var paneles = document.querySelectorAll('.panel-pestana');
+  for (var i = 0; i < paneles.length; i++) {
+    paneles[i].classList.toggle('activo', paneles[i].id === 'panel-' + destino);
+  }
 }
 
 /* -------------------------------------------------------- instalacion/SW */
@@ -882,7 +888,7 @@ function cargarSelectorNiveles() {
   var html = '';
   for (var i = 0; i < NIVELES_IA.length; i++) {
     var n = NIVELES_IA[i];
-    html += '<option value="' + n.nivel + '">Nivel ' + n.nivel + ' ┬À ' + n.nombre + '</option>';
+    html += '<option value="' + n.nivel + '">Nivel ' + n.nivel + ' \u00b7 ' + n.nombre + '</option>';
   }
   sel.innerHTML = html;
   sel.value = String(UI.nivel);
