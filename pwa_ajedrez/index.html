@@ -42,7 +42,7 @@
       </div>
 
       <div class="tablero-marco">
-        <div id="tablero" class="tablero" role="grid" aria-label="Tablero de ajedrez"></div>
+        <div id="tablero" class="tablero" role="grid" aria-label="Tablero de ajedrez" tabindex="0"></div>
       </div>
 
       <div class="jugador" id="jugador-bottom">
@@ -52,6 +52,8 @@
       </div>
 
       <div id="aviso" class="aviso">Sin capturas todavia.</div>
+
+      <div id="anuncio-sr" class="visually-hidden" aria-live="polite" role="status"></div>
 
       <div class="revision-barra" id="revision-barra" hidden>
         <button type="button" class="btn-mini" id="rev-inicio">Inicio</button>

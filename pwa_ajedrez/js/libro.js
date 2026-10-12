@@ -17,7 +17,7 @@ var LIBRO = {
   'rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R b KQkq -': ['d7d5', 'g8f6', 'c7c5', 'e7e6'],
 
   /* 1.e4 e5 - aperturas abiertas (Fischer, Carlsen) */
-  'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -': ['g1f3', 'f1c4', 'b1c3'],
+  'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq -': ['d2d4', 'f2f4', 'g1f3', 'f1c4', 'b1c3'],
   'rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq -': ['b8c6', 'g8f6', 'd7d6'],
 
   /* Ruy Lopez: 1.e4 e5 2.Nf3 Nc6 3.Bb5 */
@@ -72,18 +72,19 @@ function uciANumeros(uci) {
   return a + '-' + b;
 }
 
-/* Clave de libro para una posicion (tablero + turno + enroque + al paso). */
+/* Clave de libro para una posicion (tablero + turno + enroque).
+ * Se ignora el campo "al paso" para que las lineas coincidan siempre. */
 function claveLibro(pos) {
   var fen = (typeof pos.aFen === 'function') ? pos.aFen() : pos.fen();
   var partes = fen.split(' ');
-  return partes[0] + ' ' + partes[1] + ' ' + partes[2] + ' ' + partes[3];
+  return partes[0] + ' ' + partes[1] + ' ' + partes[2];
 }
 
 /* Devuelve la jugada UCI del libro o null si no esta. */
 function jugadaLibro(pos) {
   try {
     var clave = claveLibro(pos);
-    var lista = LIBRO[clave];
+    var lista = LIBRO[clave + ' -'] || LIBRO[clave];
     if (!lista || !lista.length) return null;
     var legales = pos.movimientosLegales();
     var elegidas = [];
@@ -93,6 +94,7 @@ function jugadaLibro(pos) {
       }
     }
     if (!elegidas.length) return null;
+    if (elegidas.length > 1 && Math.random() < 0.6) return elegidas[0];
     return elegidas[Math.floor(Math.random() * elegidas.length)];
   } catch (e) { return null; }
 }

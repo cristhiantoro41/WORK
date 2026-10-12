@@ -189,6 +189,70 @@ function avisoDeCaptura(captura) {
   return texto;
 }
 
+/* --------------------------------------------------------- accesibilidad */
+
+function esIdiomaIngles() {
+  return !!(window.idiomaActual && window.idiomaActual() === 'en');
+}
+
+function nombrePiezaIdioma(p) {
+  var en = esIdiomaIngles();
+  var es = { p: 'peón', n: 'caballo', b: 'alfil', r: 'torre', q: 'dama', k: 'rey' };
+  var ingl = { p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king' };
+  return (en ? ingl : es)[(p || '').toLowerCase()] || (en ? 'piece' : 'pieza');
+}
+
+function anunciar(texto) {
+  try {
+    var r = id('anuncio-sr');
+    if (r) { r.textContent = ''; r.textContent = texto; }
+  } catch (e) {}
+  if (window.decirMensaje) { try { window.decirMensaje(texto); } catch (e) {} }
+}
+
+function anuncioJugada(atacante, victima, captura, mov, estado) {
+  var en = esIdiomaIngles();
+  var color = esBlanca(atacante) ? (en ? 'white' : 'blancas') : (en ? 'black' : 'negras');
+  var na = numero(aTexto(mov.origen)), nb = numero(aTexto(mov.destino));
+  var s;
+  if (mov.enroque) {
+    s = en ? 'castles' : 'enroca';
+  } else if (captura) {
+    s = nombrePiezaIdioma(atacante) + (en ? ' takes ' : ' captura ') + nombrePiezaIdioma(victima) + ', ' +
+        (captura.producto !== null ? na + 'x' + nb + '=' + captura.producto : na + 'x' + nb);
+  } else {
+    s = nombrePiezaIdioma(atacante) + (en ? ' from ' : ' de ') + na + (en ? ' to ' : ' a ') + nb;
+  }
+  var texto = color + ': ' + s + '.';
+  if (estado && estado.indexOf('Jaque mate') === 0) {
+    texto += en ? ' Checkmate.' : ' Jaque mate.';
+  } else if (estado && estado.indexOf('Rey ahogado') === 0) {
+    texto += en ? ' Stalemate.' : ' Rey ahogado.';
+  } else if (estado && estado.indexOf('Tablas') === 0) {
+    texto += en ? ' Draw.' : ' Tablas.';
+  } else if (estado === 'Jaque') {
+    texto += en ? ' Check.' : ' Jaque.';
+  } else {
+    var t = UI.motor.turno ? (en ? 'white' : 'blancas') : (en ? 'black' : 'negras');
+    texto += en ? (' ' + t + ' to move.') : (' Le toca a las ' + t + '.');
+  }
+  return texto;
+}
+
+function anunciarCursor() {
+  if (!UI.cursor) return;
+  var en = esIdiomaIngles();
+  var f = UI.cursor[0], c = UI.cursor[1];
+  var nom = 'abcdefgh'[c] + (8 - f);
+  var pieza = UI.motor.tablero[f][c];
+  var texto = (en ? 'square ' : 'casilla ') + numero(nom);
+  if (pieza && pieza !== '.') {
+    texto += ', ' + nombrePiezaIdioma(pieza) + ' ' +
+      (esBlanca(pieza) ? (en ? 'white' : 'blanca') : (en ? 'black' : 'negra'));
+  }
+  anunciar(texto);
+}
+
 /* ------------------------------------------------------------------ render */
 
 function render() {
@@ -228,6 +292,9 @@ function renderTablero() {
       }
       if (vivo && UI.seleccion && UI.seleccion[0] === fila && UI.seleccion[1] === col) {
         clases.push('seleccion');
+      }
+      if (vivo && UI.cursor && UI.cursor[0] === fila && UI.cursor[1] === col) {
+        clases.push('cursor');
       }
       if (reyJaque && reyJaque[0] === fila && reyJaque[1] === col) clases.push('jaque');
 
@@ -578,6 +645,7 @@ function aplicarMov(mov) {
   UI.ocultarOrigen = null;
 
   UI.estado = t.terminacion();
+  anunciar(anuncioJugada(atacante, victima, captura, aplicado, UI.estado));
   actualizarEval();
   if (captura) {
     UI.avisoTexto = avisoDeCaptura(captura);
@@ -610,7 +678,7 @@ function responderIA() {
   setTimeout(function () {
     var uci = null;
     try {
-      if (window.jugadaLibro && UI.motor.pos.jugada <= 6) {
+      if (window.jugadaLibro && UI.motor.pos.jugada <= 12) {
         uci = jugadaLibro(UI.motor.pos);
       }
     } catch (e) { uci = null; }
@@ -714,7 +782,25 @@ function toast(texto) {
 
 /* ------------------------------------------------------------- puntero */
 
+function casillaDeElemento(el) {
+  while (el && el.nodeType === 1) {
+    if (typeof el.className === 'string' &&
+        (' ' + el.className + ' ').indexOf(' casilla ') !== -1) {
+      var f = parseInt(el.getAttribute('data-fila'), 10);
+      var c = parseInt(el.getAttribute('data-col'), 10);
+      return (isNaN(f) || isNaN(c)) ? null : [f, c];
+    }
+    el = el.parentNode;
+  }
+  return null;
+}
+
 function punteroACasilla(ev) {
+  if (typeof document.elementFromPoint === 'function') {
+    var bajo = document.elementFromPoint(ev.clientX, ev.clientY);
+    var cas = casillaDeElemento(bajo);
+    if (cas) return cas;
+  }
   var t = id('tablero');
   var rect = t.getBoundingClientRect();
   var x = ev.clientX - rect.left;
@@ -919,6 +1005,56 @@ function configurarEventos() {
       UI.seleccion = null;
       UI.destinos = [];
     }
+    render();
+  });
+
+  t.addEventListener('keydown', function (ev) {
+    if (!esTurnoHumano()) return;
+    var k = ev.key;
+    var esFlecha = k === 'ArrowUp' || k === 'ArrowDown' || k === 'ArrowLeft' || k === 'ArrowRight';
+    if (esFlecha || k === 'Enter' || k === ' ' || k === 'Escape') ev.preventDefault();
+    else return;
+
+    if (!UI.cursor) {
+      UI.cursor = UI.seleccion ? [UI.seleccion[0], UI.seleccion[1]] : [UI.motor.turno ? 6 : 1, 4];
+    }
+    if (k === 'Escape') {
+      UI.seleccion = null;
+      UI.destinos = [];
+      anunciarCursor();
+      render();
+      return;
+    }
+    if (k === 'Enter' || k === ' ') {
+      var c = UI.cursor;
+      if (UI.seleccion) {
+        var cand = candidatosDestino(c);
+        if (cand.length) { ejecutarCandidatas(cand); return; }
+      }
+      var pieza = UI.motor.tablero[c[0]][c[1]];
+      if (pieza !== '.' && esBlanca(pieza) === UI.motor.turno) {
+        UI.seleccion = [c[0], c[1]];
+        UI.destinos = UI.motor.jugadas_legales().filter(function (m) {
+          return m.origen[0] === c[0] && m.origen[1] === c[1];
+        });
+      } else {
+        UI.seleccion = null;
+        UI.destinos = [];
+      }
+      anunciarCursor();
+      render();
+      return;
+    }
+    var v = vert(UI.cursor[0], UI.cursor[1]);
+    if (k === 'ArrowUp') v[0]--;
+    if (k === 'ArrowDown') v[0]++;
+    if (k === 'ArrowLeft') v[1]--;
+    if (k === 'ArrowRight') v[1]++;
+    if (v[0] < 0) v[0] = 0; if (v[0] > 7) v[0] = 7;
+    if (v[1] < 0) v[1] = 0; if (v[1] > 7) v[1] = 7;
+    var nc = desvert(v[0], v[1]);
+    UI.cursor = [nc[0], nc[1]];
+    anunciarCursor();
     render();
   });
 
