@@ -223,9 +223,11 @@ function renderTablero() {
       if (pieza !== '.' && !oculta) {
         var etiquetaTexto = etiqueta(pieza, letras[col] + (8 - fila));
         var blanca = esBlanca(pieza);
+        var esRey = (pieza === 'K' || pieza === 'k');
         html += '<div class="pieza ' + (blanca ? 'blanca' : 'negra') +
-          (etiquetaTexto.length > 1 ? ' dos' : '') + '" data-pieza="' + pieza + '">' +
-          etiquetaTexto + '</div>';
+          (esRey ? ' rey' : '') + (etiquetaTexto.length > 1 ? ' dos' : '') +
+          '" data-pieza="' + pieza + '">' +
+          (esRey ? '<img src="./imagenes/rey.webp" alt="Rey">' : etiquetaTexto) + '</div>';
       }
 
       for (var d = 0; d < UI.destinos.length; d++) {
