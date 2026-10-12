@@ -407,47 +407,56 @@ Posicion.prototype.esLegal = function (movimiento) {
 /* --------------------------------------------------------- aplicar y deshacer */
 
 Posicion.prototype.aplicar = function (movimiento) {
+  var filaO = movimiento.origen[0];
+  var colO = movimiento.origen[1];
+  var filaD = movimiento.destino[0];
+  var colD = movimiento.destino[1];
+  var tab = this.tablero;
+  var pieza = tab[filaO][colO];
+  var color = esBlanca(pieza);
+  var objetivo = tab[filaD][colD];
+
+  var capturaOPeon = movimiento.enPasante || movimiento.promocion !== null;
+  var medios = (capturaOPeon || objetivo !== VACIA || pieza.toUpperCase() === 'P') ? 0 : this.medios + 1;
+
+  var cambios = [];
+
+  if (movimiento.enPasante) {
+    cambios.push(filaO, colD, tab[filaO][colD]);
+    tab[filaO][colD] = VACIA;
+  }
+
+  if (movimiento.enroque) {
+    if (colD > colO) {
+      cambios.push(filaO, 5, tab[filaO][5]);
+      tab[filaO][5] = tab[filaO][7];
+      cambios.push(filaO, 7, tab[filaO][7]);
+      tab[filaO][7] = VACIA;
+    } else {
+      cambios.push(filaO, 3, tab[filaO][3]);
+      tab[filaO][3] = tab[filaO][0];
+      cambios.push(filaO, 0, tab[filaO][0]);
+      tab[filaO][0] = VACIA;
+    }
+  }
+
+  cambios.push(filaD, colD, objetivo);
+  tab[filaD][colD] = movimiento.promocion || pieza;
+  cambios.push(filaO, colO, pieza);
+  tab[filaO][colO] = VACIA;
+
   this._pila.push({
-    tablero: this.tablero.map(function (fila) { return fila.slice(); }),
+    cambios: cambios,
     turno: this.turno,
     enroque: this.enroque,
     enPasante: this.enPasante,
     medios: this.medios,
     jugada: this.jugada,
-    reyes: Object.assign({}, this.reyes)
+    reyes: this.reyes
   });
 
-  var filaO = movimiento.origen[0];
-  var colO = movimiento.origen[1];
-  var filaD = movimiento.destino[0];
-  var colD = movimiento.destino[1];
-  var pieza = this.tablero[filaO][colO];
-  var color = esBlanca(pieza);
-  var objetivo = this.tablero[filaD][colD];
-
-  var capturaOPeon = movimiento.enPasante || movimiento.promocion !== null;
-  if (capturaOPeon || objetivo !== VACIA || pieza.toUpperCase() === 'P') {
-    this.medios = 0;
-  } else {
-    this.medios += 1;
-  }
-
-  if (movimiento.enPasante) this.tablero[filaO][colD] = VACIA;
-
-  if (movimiento.enroque) {
-    if (colD > colO) {
-      this.tablero[filaO][5] = this.tablero[filaO][7];
-      this.tablero[filaO][7] = VACIA;
-    } else {
-      this.tablero[filaO][3] = this.tablero[filaO][0];
-      this.tablero[filaO][0] = VACIA;
-    }
-  }
-
-  this.tablero[filaD][colD] = movimiento.promocion || pieza;
-  this.tablero[filaO][colO] = VACIA;
-
   this.enroque = this._derechosPerdidos(movimiento.origen, movimiento.destino, pieza);
+  this.medios = medios;
 
   this.enPasante = null;
   if (pieza.toUpperCase() === 'P' && Math.abs(filaD - filaO) === 2) {
@@ -486,7 +495,11 @@ Posicion.prototype._derechosPerdidos = function (origen, destino, pieza) {
 Posicion.prototype.deshacer = function () {
   if (!this._pila.length) throw new Error('No hay jugadas que deshacer');
   var estado = this._pila.pop();
-  this.tablero = estado.tablero;
+  var cambios = estado.cambios;
+  var tab = this.tablero;
+  for (var i = 0; i < cambios.length; i += 3) {
+    tab[cambios[i]][cambios[i + 1]] = cambios[i + 2];
+  }
   this.turno = estado.turno;
   this.enroque = estado.enroque;
   this.enPasante = estado.enPasante;
@@ -706,14 +719,13 @@ function quiescencia(posicion, alfa, beta, estado) {
   comprobar_tiempo(estado);
 
   var enJaqueAhora = posicion.enJaque(posicion.turno);
-  var movimientos = posicion.movimientosLegales();
-  if (!movimientos.length) {
-    if (!enJaqueAhora) return 0;
-    return posicion.turno ? -INF + posicion.jugada : INF - posicion.jugada;
-  }
 
   if (enJaqueAhora) {
     /* Todas las evasiones: una semi-jugada completa hasta evaluar. */
+    var movimientos = posicion.movimientosLegales();
+    if (!movimientos.length) {
+      return posicion.turno ? -INF + posicion.jugada : INF - posicion.jugada;
+    }
     movimientos = ordenar(movimientos, posicion);
     if (posicion.turno) {
       var mejor = -INF;
@@ -741,20 +753,28 @@ function quiescencia(posicion, alfa, beta, estado) {
 
   var quietud = evaluar(posicion) + (posicion.turno ? TEMPO : -TEMPO);
 
+  var pseudo = posicion.movimientosPseudoLegales();
   var capturas = [];
-  for (var k = 0; k < movimientos.length; k++) {
-    var m = movimientos[k];
-    if (m.promocion || posicion.tablero[m.destino[0]][m.destino[1]] !== VACIA) {
-      capturas.push(m);
+  for (var k = 0; k < pseudo.length; k++) {
+    var m = pseudo[k];
+    if (m.promocion || m.enPasante || posicion.tablero[m.destino[0]][m.destino[1]] !== VACIA) {
+      if (posicion.esLegal(m)) capturas.push(m);
     }
   }
   capturas = ordenar(capturas, posicion);
 
   if (posicion.turno) {
-    /* Maximizador: el "stand pat" es quietud y las capturas solo pueden subir. */
+    /* Maximizador. Stand-pat: callar ya vale quietud. */
+    if (quietud >= beta) return quietud;
+    if (quietud > alfa) alfa = quietud;
     var mejor = quietud;
     for (var c = 0; c < capturas.length; c++) {
-      posicion.aplicar(capturas[c]);
+      var mc = capturas[c];
+      var vic = posicion.tablero[mc.destino[0]][mc.destino[1]];
+      var gana = mc.enPasante ? VALORES_PIEZAS.P : (vic === VACIA ? 0 : VALORES_PIEZAS[vic.toUpperCase()]);
+      if (mc.promocion) gana += VALORES_PIEZAS[mc.promocion.toUpperCase()];
+      if (quietud + gana + 200 <= alfa) continue;
+      posicion.aplicar(mc);
       var v = quiescencia(posicion, alfa, beta, estado);
       posicion.deshacer();
       if (v > mejor) mejor = v;
@@ -764,10 +784,17 @@ function quiescencia(posicion, alfa, beta, estado) {
     return mejor;
   }
 
-  /* Minimizador: el "stand pat" es quietud y las capturas solo pueden bajar. */
+  /* Minimizador. Stand-pat: callar ya vale quietud. */
+  if (quietud <= alfa) return quietud;
+  if (quietud < beta) beta = quietud;
   var peor = quietud;
   for (var c2 = 0; c2 < capturas.length; c2++) {
-    posicion.aplicar(capturas[c2]);
+    var mc2 = capturas[c2];
+    var vic2 = posicion.tablero[mc2.destino[0]][mc2.destino[1]];
+    var gana2 = mc2.enPasante ? VALORES_PIEZAS.P : (vic2 === VACIA ? 0 : VALORES_PIEZAS[vic2.toUpperCase()]);
+    if (mc2.promocion) gana2 += VALORES_PIEZAS[mc2.promocion.toUpperCase()];
+    if (quietud - gana2 - 200 >= beta) continue;
+    posicion.aplicar(mc2);
     var v2 = quiescencia(posicion, alfa, beta, estado);
     posicion.deshacer();
     if (v2 < peor) peor = v2;
@@ -905,6 +932,79 @@ function mejorJugada(posicion, profundidad, opciones) {
 
 /* -------------------------------------------- analisis profundo (asistente) */
 
+/* Tabla de transposicion: hashing Zobrist para reutilizar subposiciones. */
+var INDICE_PIEZA = { P: 0, N: 1, B: 2, R: 3, Q: 4, K: 5, p: 6, n: 7, b: 8, r: 9, q: 10, k: 11 };
+
+var ZOBRIST = (function () {
+  var semilla = 0x9e3779b9 >>> 0;
+  function rnd() {
+    semilla ^= (semilla << 13) >>> 0; semilla >>>= 0;
+    semilla ^= semilla >>> 17;
+    semilla ^= (semilla << 5) >>> 0; semilla >>>= 0;
+    return semilla >>> 0;
+  }
+  function tabla(cantidad) {
+    var arr = [];
+    for (var i = 0; i < cantidad; i++) arr.push(rnd());
+    return arr;
+  }
+  var piezas = [], piezas2 = [];
+  for (var p = 0; p < 12; p++) {
+    var fila = [], fila2 = [];
+    for (var i = 0; i < 64; i++) { fila.push(rnd()); fila2.push(rnd()); }
+    piezas.push(fila);
+    piezas2.push(fila2);
+  }
+  var enroque = [], enroque2 = [];
+  for (var e = 0; e < 16; e++) { enroque.push(rnd()); enroque2.push(rnd()); }
+  var alPaso = [], alPaso2 = [];
+  for (var c = 0; c < 8; c++) { alPaso.push(rnd()); alPaso2.push(rnd()); }
+  return {
+    piezas: piezas, piezas2: piezas2,
+    turno: rnd(), turno2: rnd(),
+    enroque: enroque, enroque2: enroque2,
+    alPaso: alPaso, alPaso2: alPaso2
+  };
+})();
+
+function indiceEnroque(derechos) {
+  var k = 0;
+  if (derechos.indexOf('K') >= 0) k |= 1;
+  if (derechos.indexOf('Q') >= 0) k |= 2;
+  if (derechos.indexOf('k') >= 0) k |= 4;
+  if (derechos.indexOf('q') >= 0) k |= 8;
+  return k;
+}
+
+/* Dos hashes de 32 bits independientes para evitar colisiones en la tt. El
+ * segundo queda en HASH_B (se lee justo despues de llamar a hashPosicion). */
+var HASH_B = 0;
+
+function hashPosicion(posicion) {
+  var a = 0, b = 0, t = posicion.tablero;
+  for (var f = 0; f < 8; f++) {
+    for (var c = 0; c < 8; c++) {
+      var pieza = t[f][c];
+      if (pieza === VACIA) continue;
+      var idx = INDICE_PIEZA[pieza];
+      var s = f * 8 + c;
+      a ^= ZOBRIST.piezas[idx][s];
+      b ^= ZOBRIST.piezas2[idx][s];
+    }
+  }
+  if (!posicion.turno) { a ^= ZOBRIST.turno; b ^= ZOBRIST.turno2; }
+  var ie = indiceEnroque(posicion.enroque);
+  a ^= ZOBRIST.enroque[ie];
+  b ^= ZOBRIST.enroque2[ie];
+  if (posicion.enPasante) {
+    var col = posicion.enPasante[1];
+    a ^= ZOBRIST.alPaso[col];
+    b ^= ZOBRIST.alPaso2[col];
+  }
+  HASH_B = b >>> 0;
+  return a >>> 0;
+}
+
 /* Clave numerica barata de un movimiento (para killer/history). */
 function _movKey(m) {
   var o = m.origen[0] * 8 + m.origen[1];
@@ -913,7 +1013,9 @@ function _movKey(m) {
   return (o * 64 + d) * 5 + p;
 }
 
-function _pesoMov(m, k0, k1, tablero, history) {
+function _pesoMov(m, k0, k1, tablero, history, ttKey) {
+  var k = _movKey(m);
+  if (ttKey !== null && k === ttKey) return 1000000;
   var victima = tablero[m.destino[0]][m.destino[1]];
   var atacante = tablero[m.origen[0]][m.origen[1]];
   var a = atacante === VACIA ? 0 : VALORES_PIEZAS[atacante.toUpperCase()];
@@ -921,7 +1023,6 @@ function _pesoMov(m, k0, k1, tablero, history) {
   if (victima !== VACIA) v = VALORES_PIEZAS[victima.toUpperCase()] * 10 - a;
   if (m.promocion) v += 1000 + VALORES_PIEZAS[m.promocion.toUpperCase()];
   if (v === 0) {
-    var k = _movKey(m);
     if (k === k0) v = 950;
     else if (k === k1) v = 900;
     else v = history[k] || 0;
@@ -929,29 +1030,49 @@ function _pesoMov(m, k0, k1, tablero, history) {
   return v;
 }
 
-function _ordenarCon(movimientos, posicion, killers, history) {
+function _ordenarCon(movimientos, posicion, killers, history, ttMove) {
   var arr = movimientos.slice();
   var k0 = killers[0], k1 = killers[1], t = posicion.tablero;
+  var ttKey = ttMove ? _movKey(ttMove) : null;
   arr.sort(function (x, y) {
-    return _pesoMov(y, k0, k1, t, history) - _pesoMov(x, k0, k1, t, history);
+    return _pesoMov(y, k0, k1, t, history, ttKey) - _pesoMov(x, k0, k1, t, history, ttKey);
   });
   return arr;
 }
 
-/* Alfa-beta con linea principal (pv triangular) y heuristica killer/history. */
-function _alfabetaPV(posicion, profundidad, alfa, beta, estado, ply, pv, killers, history) {
+/* Alfa-beta con linea principal (pv triangular), killer/history y tabla de
+ * transposicion (tt opcional: {prof, valor, flag, mejor}). */
+function _alfabetaPV(posicion, profundidad, alfa, beta, estado, ply, pv, killers, history, tt) {
   comprobar_tiempo(estado);
   if (!pv[ply]) pv[ply] = [];
   pv[ply].length = 0;
 
   if (profundidad <= 0) return quiescencia(posicion, alfa, beta, estado);
 
+  var alfaOrig = alfa, betaOrig = beta;
+  var clave = null, claveB = 0, ttMove = null;
+  if (tt) {
+    clave = hashPosicion(posicion);
+    claveB = HASH_B;
+    var entrada = tt.get(clave);
+    if (entrada && entrada.b === claveB) {
+      ttMove = entrada.mejor;
+      if (entrada.prof >= profundidad) {
+        if (entrada.flag === 0) return entrada.valor;
+        if (entrada.flag === 1 && entrada.valor >= beta) return entrada.valor;
+        if (entrada.flag === 2 && entrada.valor <= alfa) return entrada.valor;
+      }
+    }
+  }
+
   var movimientos = posicion.movimientosLegales();
   if (!movimientos.length) {
     if (!posicion.enJaque(posicion.turno)) return 0;
     return posicion.turno ? -INF + posicion.jugada : INF - posicion.jugada;
   }
-  movimientos = _ordenarCon(movimientos, posicion, killers, history);
+  movimientos = _ordenarCon(movimientos, posicion, killers, history, ttMove);
+
+  var mejorMov = null;
 
   if (posicion.turno) {
     var mejor = -INF;
@@ -960,12 +1081,13 @@ function _alfabetaPV(posicion, profundidad, alfa, beta, estado, ply, pv, killers
       posicion.aplicar(m);
       var v;
       try {
-        v = _alfabetaPV(posicion, profundidad - 1, alfa, beta, estado, ply + 1, pv, killers, history);
+        v = _alfabetaPV(posicion, profundidad - 1, alfa, beta, estado, ply + 1, pv, killers, history, tt);
       } finally {
         posicion.deshacer();
       }
       if (v > mejor) {
         mejor = v;
+        mejorMov = m;
         pv[ply][0] = m;
         var hijo = pv[ply + 1];
         for (var z = 0; hijo && z < hijo.length; z++) pv[ply][z + 1] = hijo[z];
@@ -981,6 +1103,7 @@ function _alfabetaPV(posicion, profundidad, alfa, beta, estado, ply, pv, killers
         break;
       }
     }
+    if (tt) tt.set(clave, { b: claveB, prof: profundidad, valor: mejor, flag: mejor <= alfaOrig ? 2 : (mejor >= betaOrig ? 1 : 0), mejor: mejorMov });
     return mejor;
   }
 
@@ -990,12 +1113,13 @@ function _alfabetaPV(posicion, profundidad, alfa, beta, estado, ply, pv, killers
     posicion.aplicar(m2);
     var v2;
     try {
-      v2 = _alfabetaPV(posicion, profundidad - 1, alfa, beta, estado, ply + 1, pv, killers, history);
+      v2 = _alfabetaPV(posicion, profundidad - 1, alfa, beta, estado, ply + 1, pv, killers, history, tt);
     } finally {
       posicion.deshacer();
     }
     if (v2 < peor) {
       peor = v2;
+      mejorMov = m2;
       pv[ply][0] = m2;
       var hijo2 = pv[ply + 1];
       for (var z2 = 0; hijo2 && z2 < hijo2.length; z2++) pv[ply][z2 + 1] = hijo2[z2];
@@ -1004,6 +1128,7 @@ function _alfabetaPV(posicion, profundidad, alfa, beta, estado, ply, pv, killers
     if (peor < beta) beta = peor;
     if (beta <= alfa) break;
   }
+  if (tt) tt.set(clave, { b: claveB, prof: profundidad, valor: peor, flag: peor >= betaOrig ? 1 : (peor <= alfaOrig ? 2 : 0), mejor: mejorMov });
   return peor;
 }
 
@@ -1016,11 +1141,12 @@ function analizar(posicion, opciones) {
   var estado = { fecha: Date.now() + ms, nodos: 0, paso: 2048 };
   var killers = [0, 0];
   var history = {};
+  var tt = new Map();
 
   var mejor = null, mejorpuntaje = 0, profAlcanzada = 0, mejorLinea = [], candidatas = [];
 
   for (var d = 1; d <= maxProf; d++) {
-    var movs = _ordenarCon(posicion.movimientosLegales(), posicion, killers, history);
+    var movs = _ordenarCon(posicion.movimientosLegales(), posicion, killers, history, mejor);
     if (!movs.length) break;
     if (estado.fecha && Date.now() > estado.fecha) break;
 
@@ -1036,7 +1162,7 @@ function analizar(posicion, opciones) {
         var v;
         try {
           pv = [];
-          v = _alfabetaPV(posicion, d - 1, alfa, beta, estado, 0, pv, killers, history);
+          v = _alfabetaPV(posicion, d - 1, alfa, beta, estado, 0, pv, killers, history, tt);
         } finally {
           posicion.deshacer();
         }
