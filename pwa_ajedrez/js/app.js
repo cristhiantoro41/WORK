@@ -358,8 +358,22 @@ function renderJugadores() {
 function actualizarEval() {
   try {
     if (!UI.motor || !UI.motor.pos) { UI.eval = 0; return; }
-    UI.eval = evaluar(UI.motor.pos);
-  } catch (e) { UI.eval = 0; }
+    var pos = UI.motor.pos;
+    var movs = pos.movimientosLegales();
+    if (!movs.length) {
+      UI.eval = pos.enJaque(pos.turno) ? (pos.turno ? -1e8 : 1e8) : 0;
+      return;
+    }
+    if (typeof analizar === 'function') {
+      var r = analizar(pos, { ms: 90, profundidad: 6 });
+      var v = r.puntaje || 0;
+      UI.eval = pos.turno ? v : -v;
+    } else {
+      UI.eval = evaluar(pos);
+    }
+  } catch (e) {
+    UI.eval = (UI.motor && UI.motor.pos) ? evaluar(UI.motor.pos) : 0;
+  }
 }
 
 function renderEval() {
@@ -368,11 +382,17 @@ function renderEval() {
   var barra = id('eval-barra');
   if (!fill || !num) return;
   var v = UI.eval || 0;
-  var pct = Math.max(3, Math.min(97, 50 + v / 16));
+  var a = Math.abs(v);
+  var mate = a > 9e7;
+  var pct = mate ? (v > 0 ? 97 : 3) : Math.max(3, Math.min(97, 50 + v / 16));
   fill.style.width = pct + '%';
-  var signo = v >= 0 ? '+' : '';
-  num.textContent = signo + (v / 100).toFixed(2);
-  if (barra) barra.classList.toggle('blancas', v > 0);
+  if (mate) {
+    var n = Math.max(1, Math.ceil((1e8 - a) / 2));
+    num.textContent = v > 0 ? 'M' + n : '-M' + n;
+  } else {
+    num.textContent = (v >= 0 ? '+' : '') + (v / 100).toFixed(2);
+  }
+  if (barra) barra.classList.toggle('mate', mate);
 }
 
 function pintarRelojes() {
@@ -586,7 +606,7 @@ function nuevaPartida() {
   UI.seleccion = null;
   UI.destinos = [];
   UI.ocultarOrigen = null;
-  UI.eval = 0;
+  actualizarEval();
   UI.estado = '';
   UI.fin = false;
   UI.pensando = false;
@@ -1017,6 +1037,7 @@ function iniciar() {
   });
 
   UI.invertido = !UI.humanoEsBlancas;
+  actualizarEval();
   render();
 }
 
