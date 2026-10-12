@@ -86,8 +86,8 @@ button, select, input { font-family: inherit; }
 .marca { display: flex; align-items: center; gap: 10px; min-width: 0; }
 
 .logo {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: radial-gradient(circle at 34% 30%, #ffffff, #e6e2d8 70%);
   border: 2px solid #16140f;
