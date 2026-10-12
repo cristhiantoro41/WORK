@@ -191,34 +191,88 @@ button, select, input { font-family: inherit; }
   box-shadow: 0 8px 26px var(--sombra);
 }
 
-/* ------------------------------------------------------------------ relojes */
-.relojes {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
-}
+/* ---------------------------------------------------- jugadores y relojes */
+.tablero-col { width: 100%; }
 
-.reloj {
-  flex: 1;
+.jugador {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   background: var(--panel);
   border: 1px solid var(--borde);
   border-radius: var(--radio);
-  padding: 7px 12px;
+  padding: 6px 12px;
 }
-.reloj.etiqueta-tiempo { border-color: var(--acento); }
-.reloj-tiempo {
-  font-variant-numeric: tabular-nums;
-  font-size: 22px;
+#jugador-top { margin-bottom: 6px; }
+#jugador-bottom { margin-top: 8px; }
+
+.jugador-ficha {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #16140f;
+  flex: 0 0 auto;
+}
+.jugador-ficha.blanca { background: radial-gradient(circle at 34% 30%, #ffffff, #e6e2d8 72%); }
+.jugador-ficha.negra { background: radial-gradient(circle at 34% 30%, #4a4844, #16140f 72%); }
+
+.jugador-nombre {
+  flex: 1 1 auto;
+  min-width: 0;
   font-weight: 700;
   color: var(--texto-alto);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.reloj .reloj-etiqueta { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--texto-tenue); }
-.reloj.activo .reloj-tiempo { color: var(--acento); }
-.reloj.critico .reloj-tiempo { color: #e2564a; }
+
+.reloj-mini {
+  flex: 0 0 auto;
+  min-width: 76px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 6px;
+  background: var(--panel2);
+  border: 1px solid var(--borde);
+  color: var(--texto-tenue);
+}
+.reloj-mini.activo { color: var(--texto-alto); border-color: var(--acento); }
+.reloj-mini.critico { color: #e2564a; }
+.sin-relojes .reloj-mini { visibility: hidden; }
+
+/* -------------------------------------------------------------- evaluacion */
+.eval-barra {
+  position: relative;
+  height: 14px;
+  margin: 0 0 8px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #3a3733;
+  border: 1px solid var(--borde);
+}
+.eval-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  background: #f4f1ec;
+  transition: width 0.25s ease;
+}
+.eval-num {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: #d8d3c9;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
+}
+.eval-barra.mate .eval-num { color: #ffd76a; }
 
 /* ------------------------------------------------------------------- tablero */
 
@@ -699,7 +753,7 @@ select:focus, input:focus { outline: none; border-color: var(--acento); }
   .principal { flex-direction: column; padding: 8px; gap: 10px; }
   .zona-tablero { flex: 1 1 auto; width: 100%; max-width: none; }
   .panel { width: 100%; max-width: none; min-width: 0; }
-  .tablero-marco { max-width: min(96vw, 560px); margin: 0 auto; }
+  .tablero-col { max-width: min(96vw, 560px); margin: 0 auto; }
   .chat-contenedor { height: min(420px, 55vh); }
 }
 
@@ -716,8 +770,8 @@ select:focus, input:focus { outline: none; border-color: var(--acento); }
   .controles { grid-template-columns: 1fr; }
   .campo-reloj { grid-column: span 1; }
   .leyenda { font-size: 11px; }
-  .tablero-marco { max-width: 98vw; }
-  .reloj-tiempo { font-size: 20px; }
+  .tablero-col { max-width: 98vw; }
+  .reloj-mini { font-size: 17px; min-width: 66px; }
   .pieza { font-size: 8.4cqw; }
   .pieza.dos { font-size: 6.6cqw; }
   .pieza.rey img { width: 96%; height: 96%; }

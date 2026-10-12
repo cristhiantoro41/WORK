@@ -28,17 +28,31 @@
 
 <main class="principal">
 
-  <section class="zona-tablero">
-    <div class="relojes" id="relojes" hidden>
-      <div class="reloj" id="reloj-negras"><span class="reloj-etiqueta">Negras</span><span class="reloj-tiempo">--:--</span></div>
-      <div class="reloj" id="reloj-blancas"><span class="reloj-etiqueta">Blancas</span><span class="reloj-tiempo">--:--</span></div>
-    </div>
+  <section class="zona-tablero" id="zona-tablero">
+    <div class="tablero-col">
+      <div class="jugador" id="jugador-top">
+        <span class="jugador-ficha negra" aria-hidden="true"></span>
+        <span class="jugador-nombre" id="nombre-top">Computadora</span>
+        <span class="reloj-mini" id="reloj-top"><span class="reloj-tiempo">--:--</span></span>
+      </div>
 
-    <div class="tablero-marco">
-      <div id="tablero" class="tablero" role="grid" aria-label="Tablero de ajedrez"></div>
-    </div>
+      <div class="eval-barra" id="eval-barra" title="Evaluaci&#243;n de la posici&#243;n (blancas abajo)" aria-label="Evaluaci&#243;n">
+        <div class="eval-fill" id="eval-fill"></div>
+        <span class="eval-num" id="eval-num">0.00</span>
+      </div>
 
-    <div id="aviso" class="aviso">Sin capturas todavia.</div>
+      <div class="tablero-marco">
+        <div id="tablero" class="tablero" role="grid" aria-label="Tablero de ajedrez"></div>
+      </div>
+
+      <div class="jugador" id="jugador-bottom">
+        <span class="jugador-ficha blanca" aria-hidden="true"></span>
+        <span class="jugador-nombre" id="nombre-bottom">Vos</span>
+        <span class="reloj-mini" id="reloj-bottom"><span class="reloj-tiempo">--:--</span></span>
+      </div>
+
+      <div id="aviso" class="aviso">Sin capturas todavia.</div>
+    </div>
   </section>
 
   <aside class="panel">

@@ -24,6 +24,7 @@ var UI = {
   pensando: false,
   ocultarOrigen: null,
   relojes: { blancas: 600, negras: 600 },
+  eval: 0,
   tick: null,
   relojArrancado: false
 };
@@ -182,6 +183,8 @@ function render() {
   renderCapturas();
   renderAviso();
   renderBotones();
+  renderJugadores();
+  renderEval();
 }
 
 function renderTablero() {
@@ -331,21 +334,65 @@ function renderBotones() {
   id('btn-numeros').textContent = UI.numeros ? 'Ocultar n\u00fameros 1-64' : 'Mostrar n\u00fameros 1-64';
   id('btn-sonido2').textContent = 'Sonido: ' + (UI.sonido ? 's\u00ed' : 'no');
   id('btn-tema2').textContent = 'Tema: ' + UI.tema;
-  id('relojes').hidden = !UI.reloj;
+  id('zona-tablero').classList.toggle('sin-relojes', !UI.reloj);
   pintarRelojes();
 }
 
+function colorArriba() {
+  return UI.invertido ? 'blancas' : 'negras';
+}
+
+function renderJugadores() {
+  var arriba = colorArriba();
+  var abajo = arriba === 'blancas' ? 'negras' : 'blancas';
+  var fichaTop = document.querySelector('#jugador-top .jugador-ficha');
+  if (fichaTop) fichaTop.className = 'jugador-ficha ' + (arriba === 'blancas' ? 'blanca' : 'negra');
+  var fichaBot = document.querySelector('#jugador-bottom .jugador-ficha');
+  if (fichaBot) fichaBot.className = 'jugador-ficha ' + (abajo === 'blancas' ? 'blanca' : 'negra');
+  var nomTop = id('nombre-top');
+  if (nomTop) nomTop.textContent = 'Computadora \u00b7 ' + nombreNivel(UI.nivel);
+  var nomBot = id('nombre-bottom');
+  if (nomBot) nomBot.textContent = 'Vos';
+}
+
+function actualizarEval() {
+  try {
+    if (!UI.motor || !UI.motor.pos) { UI.eval = 0; return; }
+    UI.eval = evaluar(UI.motor.pos);
+  } catch (e) { UI.eval = 0; }
+}
+
+function renderEval() {
+  var fill = id('eval-fill');
+  var num = id('eval-num');
+  var barra = id('eval-barra');
+  if (!fill || !num) return;
+  var v = UI.eval || 0;
+  var pct = Math.max(3, Math.min(97, 50 + v / 16));
+  fill.style.width = pct + '%';
+  var signo = v >= 0 ? '+' : '';
+  num.textContent = signo + (v / 100).toFixed(2);
+  if (barra) barra.classList.toggle('blancas', v > 0);
+}
+
 function pintarRelojes() {
-  var b = id('reloj-blancas');
-  var n = id('reloj-negras');
   if (!UI.reloj) return;
-  var activoBlancas = !UI.fin && UI.motor.turno;
-  b.querySelector('.reloj-tiempo').textContent = formatoTiempo(UI.relojes.blancas);
-  n.querySelector('.reloj-tiempo').textContent = formatoTiempo(UI.relojes.negras);
-  b.classList.toggle('activo', activoBlancas);
-  n.classList.toggle('activo', !activoBlancas && !UI.fin);
-  b.classList.toggle('critico', UI.relojes.blancas < 20);
-  n.classList.toggle('critico', UI.relojes.negras < 20);
+  var arriba = colorArriba();
+  var abajo = arriba === 'blancas' ? 'negras' : 'blancas';
+  var top = id('reloj-top');
+  var bot = id('reloj-bottom');
+  if (top) {
+    top.querySelector('.reloj-tiempo').textContent = formatoTiempo(UI.relojes[arriba]);
+    var activoTop = UI.motor.turno ? 'blancas' : 'negras';
+    top.classList.toggle('activo', !UI.fin && activoTop === arriba);
+    top.classList.toggle('critico', UI.relojes[arriba] < 20);
+  }
+  if (bot) {
+    bot.querySelector('.reloj-tiempo').textContent = formatoTiempo(UI.relojes[abajo]);
+    var activoBot = UI.motor.turno ? 'blancas' : 'negras';
+    bot.classList.toggle('activo', !UI.fin && activoBot === abajo);
+    bot.classList.toggle('critico', UI.relojes[abajo] < 20);
+  }
 }
 
 function formatoTiempo(segundos) {
@@ -446,6 +493,7 @@ function aplicarMov(mov) {
   UI.ocultarOrigen = null;
 
   UI.estado = t.terminacion();
+  actualizarEval();
   if (captura) {
     UI.avisoTexto = avisoDeCaptura(captura);
     sonar('capturar');
@@ -524,6 +572,7 @@ function deshacer() {
   UI.seleccion = null;
   UI.destinos = [];
   id('modal-fin').hidden = true;
+  actualizarEval();
   render();
 }
 
@@ -537,6 +586,7 @@ function nuevaPartida() {
   UI.seleccion = null;
   UI.destinos = [];
   UI.ocultarOrigen = null;
+  UI.eval = 0;
   UI.estado = '';
   UI.fin = false;
   UI.pensando = false;
@@ -911,7 +961,7 @@ function iniciar() {
   id('btn-deshacer').addEventListener('click', deshacer);
   id('btn-girar').addEventListener('click', function () {
     UI.invertido = !UI.invertido;
-    renderTablero();
+    render();
   });
   id('btn-numeros').addEventListener('click', alternarNumeros);
   id('btn-numeros-top').addEventListener('click', alternarNumeros);
