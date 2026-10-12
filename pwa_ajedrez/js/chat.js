@@ -381,9 +381,44 @@
     return preg.toLowerCase().replace(/[,.!?;:]/g,' ').split(/\s+/);
   }
 
+  function sinAcentos(s){
+    return String(s||'').toLowerCase()
+      .replace(/[áàäâ]/g,'a').replace(/[éèëê]/g,'e')
+      .replace(/[íìïî]/g,'i').replace(/[óòöô]/g,'o')
+      .replace(/[úùüû]/g,'u').replace(/ñ/g,'n');
+  }
+
+  var NUM_ES_UNIDAD = {cero:0,uno:1,un:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15};
+  var NUM_ES_DECENA = {veinte:20,treinta:30,cuarenta:40,cincuenta:50,sesenta:60};
+  var NUM_ES_FUSION = {dieciseis:16,diecisiete:17,dieciocho:18,diecinueve:19,veintiuno:21,veintiun:21,veintidos:22,veintitres:23,veinticuatro:24,veinticinco:25,veintiseis:26,veintisiete:27,veintiocho:28,veintinueve:29};
+
+  /* voz en español: "treinta y uno a ocho" -> ["31","a","8"] (solo p/extraer números) */
+  function palabrasANumeros(tk){
+    var out = [];
+    for(var i=0;i<tk.length;i++){
+      var t = sinAcentos(tk[i]);
+      if(Object.prototype.hasOwnProperty.call(NUM_ES_FUSION,t)){ out.push(String(NUM_ES_FUSION[t])); continue; }
+      if(Object.prototype.hasOwnProperty.call(NUM_ES_DECENA,t)){
+        var base = NUM_ES_DECENA[t];
+        if(tk[i+1]==='y' && i+2<tk.length){
+          var u = NUM_ES_UNIDAD[sinAcentos(tk[i+2])];
+          if(u!==undefined && u>=1 && u<=9){ out.push(String(base+u)); i+=2; continue; }
+        }
+        if(t==='veinte' && i+1<tk.length){
+          var u2 = NUM_ES_UNIDAD[sinAcentos(tk[i+1])];
+          if(u2!==undefined && u2>=1 && u2<=9){ out.push(String(base+u2)); i+=1; continue; }
+        }
+        out.push(String(base)); continue;
+      }
+      if(Object.prototype.hasOwnProperty.call(NUM_ES_UNIDAD,t)){ out.push(String(NUM_ES_UNIDAD[t])); continue; }
+      out.push(tk[i]);
+    }
+    return out;
+  }
+
   function leerNums(texto){
     var out = [];
-    var tk = tokens(texto);
+    var tk = palabrasANumeros(tokens(texto));
     for(var i=0;i<tk.length;i++){
       var t = tk[i];
       if(/^\d{1,2}$/.test(t)){
@@ -392,6 +427,25 @@
       }
     }
     return out;
+  }
+
+  /* el chat solo mueve en turno humano: evita piezas que se mueven solas */
+  function estadoParaMover(){
+    try{
+      if(window.UI){
+        if(UI.fin) return 'fin';
+        if(UI.revision !== null && UI.revision !== undefined) return 'revision';
+        if(typeof esTurnoHumano === 'function' && !esTurnoHumano()) return 'turno';
+        if(UI.pensando) return 'turno';
+      }
+    }catch(e){}
+    return 'ok';
+  }
+
+  function mensajeSinTurno(est){
+    if(est==='fin') return L('La partida ya terminó. Empezá una nueva partida.','The game is over. Start a new game.');
+    if(est==='revision') return L('Estás en modo revisión. Volvé a la partida para mover.','You are in review mode. Go back to the game to move.');
+    return L('Ahora no es tu turno: mueve el otro bando (o esperá al motor).','It is not your turn: the other side moves now.');
   }
 
   function leerLetras(texto){
@@ -409,30 +463,165 @@
     return out;
   }
 
+  /* SAN estilo Lichess (lila/ui/keyboardMove): "e4", "Nf3", "exd5",
+   * "O-O", "b8=Q"; la "x" es opcional y valen letras ES (C/A/T/D). */
+  function sanDeMov(mov, legales){
+    if(mov.enroque) return [mov.destino[1] > mov.origen[1] ? 'O-O' : 'O-O-O'];
+    var tab = UI.motor.pos.tablero;
+    var tipo = String(tab[mov.origen[0]][mov.origen[1]] || '').toUpperCase();
+    var dest = aTexto(mov.destino);
+    var esCap = !!mov.enPasante || tab[mov.destino[0]][mov.destino[1]] !== '.';
+    var prom = mov.promocion ? '=' + String(mov.promocion).toUpperCase() : '';
+    if(tipo === 'P'){
+      var base = (esCap ? 'abcdefgh'.charAt(mov.origen[1]) + 'x' : '') + dest;
+      var claves = [base + prom];
+      if(esCap) claves.push(base.replace('x', '') + prom);
+      if(prom) claves.push(base + prom.slice(1), base.replace('x', '') + prom.slice(1));
+      return claves;
+    }
+    var EN = {N:'N', B:'B', R:'R', Q:'Q', K:'K'};
+    var ES = {N:'C', B:'A', R:'T', Q:'D', K:'R'};
+    var mismaCol = false, mismaFila = false, hayOtro = false;
+    for(var i = 0; i < legales.length; i++){
+      var m = legales[i];
+      if(m === mov) continue;
+      if(m.destino[0] !== mov.destino[0] || m.destino[1] !== mov.destino[1]) continue;
+      if(tab[m.origen[0]][m.origen[1]] !== tab[mov.origen[0]][mov.origen[1]]) continue;
+      if(m.origen[0] === mov.origen[0] && m.origen[1] === mov.origen[1]) continue;
+      hayOtro = true;
+      if(m.origen[1] === mov.origen[1]) mismaCol = true;
+      if(m.origen[0] === mov.origen[0]) mismaFila = true;
+    }
+    var des = '';
+    if(hayOtro){
+      if(!mismaCol) des = 'abcdefgh'.charAt(mov.origen[1]);
+      else if(!mismaFila) des = String(8 - mov.origen[0]);
+      else des = aTexto(mov.origen);
+    }
+    var x = esCap ? 'x' : '';
+    var out = [];
+    var Ls = [EN[tipo] || tipo];
+    if(ES[tipo] && ES[tipo] !== (EN[tipo] || tipo)) Ls.push(ES[tipo]);
+    for(var j = 0; j < Ls.length; j++){
+      out.push(Ls[j] + des + x + dest + prom);
+      if(esCap) out.push(Ls[j] + des + dest + prom);
+    }
+    return out;
+  }
+
+  function leerSAN(texto){
+    if(!hayTablero()) return null;
+    var legales;
+    try{ legales = UI.motor.pos.movimientosLegales(); }catch(e){ return null; }
+    if(!legales || !legales.length) return null;
+    var exacto = {}, bajo = {};
+    for(var i = 0; i < legales.length; i++){
+      var claves = sanDeMov(legales[i], legales);
+      for(var k = 0; k < claves.length; k++){
+        if(!exacto[claves[k]]) exacto[claves[k]] = legales[i];
+        var bl = claves[k].toLowerCase();
+        if(!bajo[bl]) bajo[bl] = legales[i];
+      }
+    }
+    var crudo = String(texto).replace(/[,.!?;:]/g, ' ').split(/\s+/);
+    for(var t = 0; t < crudo.length; t++){
+      var tok = crudo[t].replace(/[+#]+$/, '');
+      if(!tok) continue;
+      if(/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(tok)){
+        try{
+          var mu = UI.motor.pos.movimientoDesdeTexto(tok);
+          if(mu) return mu;
+        }catch(e){}
+      }
+      if(/^([o0]-[o0])(-[o0])?$/i.test(tok)) tok = tok.length > 3 ? 'O-O-O' : 'O-O';
+      else tok = tok.charAt(0) + tok.slice(1).toLowerCase();
+      if(exacto[tok]) return exacto[tok];
+      var bl2 = tok.toLowerCase();
+      if(bajo[bl2]) return bajo[bl2];
+    }
+    return null;
+  }
+
+  /* Nombres ECO offline (idea de lichess-org/chess-openings: eco/nombre). */
+  var APERTURAS = [
+    ['e2e4 e7e5 g1f3 b8c6 f1b5', 'Apertura Española (Ruy López)', 'Spanish Opening (Ruy Lopez)'],
+    ['e2e4 e7e5 g1f3 b8c6 f1c4', 'Apertura Italiana (Giuoco Piano)', 'Italian Game (Giuoco Piano)'],
+    ['e2e4 e7e5 g1f3', 'Apertura de Caballo de Rey', "King's Knight Opening"],
+    ['e2e4 e7e5 f2f4', 'Gambito de Rey', "King's Gambit"],
+    ['e2e4 e7e5 d2d4', 'Gambito Danés / Juego del Centro', 'Danish Gambit / Centre Game'],
+    ['e2e4 e7e5', 'Apertura Abierta', 'Open Game'],
+    ['e2e4 c7c5', 'Defensa Siciliana', 'Sicilian Defense'],
+    ['e2e4 e7e6', 'Defensa Francesa', 'French Defense'],
+    ['e2e4 c7c6', 'Defensa Caro-Kann', 'Caro-Kann Defense'],
+    ['e2e4 d7d5', 'Defensa Escandinava', 'Scandinavian Defense'],
+    ['d2d4 d7d5 c2c4', 'Gambito de Dama', "Queen's Gambit"],
+    ['d2d4 g8f6 c2c4', 'Defensa India', 'Indian Defense'],
+    ['d2d4 d7d5', 'Peón de Dama cerrado', 'Closed Queen Pawn Game'],
+    ['e2e4', 'Apertura de Peón de Rey', "King's Pawn Opening"],
+    ['d2d4', 'Apertura de Peón de Dama', "Queen's Pawn Opening"],
+    ['c2c4', 'Apertura Inglesa', 'English Opening'],
+    ['g1f3', 'Apertura Reti', 'Réti Opening']
+  ];
+
+  function nombreApertura(){
+    if(!hayTablero() || !window.UI || !UI.jugadas || !UI.jugadas.length) return '';
+    var ucis = [];
+    for(var i = 0; i < UI.jugadas.length && i < 12; i++){
+      if(UI.jugadas[i].mov && UI.jugadas[i].mov.uci) ucis.push(UI.jugadas[i].mov.uci);
+    }
+    var s = ucis.join(' ');
+    for(var k = 0; k < APERTURAS.length; k++){
+      if(s === APERTURAS[k][0] || s.indexOf(APERTURAS[k][0] + ' ') === 0) return L(APERTURAS[k][1], APERTURAS[k][2]);
+    }
+    return '';
+  }
+
+  /* token con forma de jugada ("e4", "Nf3", "O-O", "b8=Q") aunque no sea legal */
+  function pareceOrden(texto){
+    var crudo = String(texto).replace(/[,.!?;:]/g, ' ').split(/\s+/);
+    for(var i = 0; i < crudo.length; i++){
+      var t = crudo[i].replace(/[+#]+$/, '');
+      if(!t) continue;
+      if(/^([o0]-[o0])(-[o0])?$/i.test(t)) return true;
+      if(/^[a-h][1-8][a-h][1-8][qrbn]?$/i.test(t)) return true;
+      if(/^[a-h][1-8](=[qrbnp])?$/i.test(t)) return true;
+      if(/^[a-h]x[a-h][1-8](=[qrbnp])?$/i.test(t)) return true;
+      if(/^[kqrbnp][a-h]?[1-8]?x?[a-h][1-8](=[qrbnp])?$/i.test(t)) return true;
+      if(/^[catd][a-h]?[1-8]?x?[a-h][1-8]$/i.test(t)) return true;
+    }
+    return false;
+  }
+
   function intentarMoverPorVoz(preg){
     var nums = leerNums(preg);
     var lets = leerLetras(preg);
-    var uci = null;
-    if(nums.length>=2){
-      uci = nums[0] + nums[1];
-    } else if(lets.length>=2){
-      uci = lets[0] + lets[1];
-    } else {
+    var hayOrden = nums.length >= 2 || lets.length >= 2;
+    var movSan = hayOrden ? null : leerSAN(preg);
+    var intenta = hayOrden || !!movSan || pareceOrden(preg);
+    var est = estadoParaMover();
+    if(est !== 'ok'){
+      if(intenta) return mensajeSinTurno(est);
       return null;
     }
-    var mov = UI.motor.pos.movimientoDesdeTexto(uci);
-    if(!mov) return L('Esa jugada no es legal. Revisá las casillas (números 1-64 o letras como e2).','That move is not legal. Check the squares (numbers 1-64 or letters like e2).');
+    var mov = null;
+    if(nums.length >= 2) mov = UI.motor.pos.movimientoDesdeTexto(nums[0] + nums[1]);
+    else if(lets.length >= 2) mov = UI.motor.pos.movimientoDesdeTexto(lets[0] + lets[1]);
+    else mov = movSan;
+    if(!mov){
+      if(!intenta) return null;
+      return L('Esa jugada no es legal. Revisá las casillas (números 1-64, "e2 e4" o SAN como "Nf3").','That move is not legal. Check the squares (numbers 1-64, "e2 e4" or SAN like "Nf3").');
+    }
     var na = numDe(aTexto(mov.origen)), nb = numDe(aTexto(mov.destino));
     if(!aplicarMov(mov)) return L('No pude aplicar esa jugada.','I could not apply that move.');
-    return L('Jugada: '+na+'-'+nb+'.','Move: '+na+'-'+nb+'.');
+    return L('Jugada: ' + na + '-' + nb + '.','Move: ' + na + '-' + nb + '.');
   }
 
   /* ------------------------------------------------------------- chat */
 
   function AYUDA(){
     return L(
-      'Puedo: analizar la posición (analiza, mejor jugada), sugerir opciones, describir el tablero, decir la última jugada, el FEN y de quién es el turno. También mover por números (por ejemplo "mueve 44 56") o por letras ("e2 e4"). Comandos: nueva partida, deshacer, abandonar.',
-      'I can: analyze the position (analyze, best move), suggest options, describe the board, tell the last move, the FEN and whose turn it is. I can also move by numbers (for example "move 44 56") or by letters ("e2 e4"). Commands: new game, undo, resign.'
+      'Puedo: analizar la posición (analiza, mejor jugada), sugerir opciones, describir el tablero, decir la última jugada, el FEN, la apertura y de quién es el turno. Muevo por números ("mueve 44 56"), por letras ("e2 e4") o en notación Lichess ("e4", "Nf3", "O-O", "b8=Q"). Comandos: nueva partida, deshacer, abandonar.',
+      'I can: analyze the position (analyze, best move), suggest options, describe the board, tell the last move, the FEN, the opening and whose turn it is. I move by numbers ("move 44 56"), by letters ("e2 e4") or in Lichess notation ("e4", "Nf3", "O-O", "b8=Q"). Commands: new game, undo, resign.'
     );
   }
 
@@ -502,6 +691,11 @@
       return L('Le toca a las '+turnoTexto()+'.','It is '+turnoTexto()+"'s turn.");
     }
 
+    /* 10b) apertura (nombres ECO offline estilo Lichess) */
+    if(/(apertura|eco|opening)/.test(p)){
+      return nombreApertura() || L('Todavía sin nombre de apertura.', 'No opening name yet.');
+    }
+
     /* 11) saludo */
     if(/(^|\s)(hola|buenas|buen d[íi]a|hey|qu[eé] tal|holi|hello|hi|good morning|good day|good afternoon|good evening)(\s|$)/.test(p)){
       return L('¡Hola! ','Hi! ')+AYUDA();
@@ -525,6 +719,8 @@
   }
 
   function jugarMejor(){
+    var estj = estadoParaMover();
+    if(estj!=='ok') return mensajeSinTurno(estj);
     try{
       var uci = mejorUci();
       if(!uci) return L('No encontré una jugada.','I could not find a move.');
