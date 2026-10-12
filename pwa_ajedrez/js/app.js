@@ -22,6 +22,9 @@ var UI = {
   avisoTexto: '',
   fin: false,
   pensando: false,
+  iaTimeout: null,
+  partidaId: 0,
+  iaPausada: false,
   ocultarOrigen: null,
   relojes: { blancas: 600, negras: 600 },
   eval: 0,
@@ -108,6 +111,7 @@ function cargarPrefs() {
     if (typeof p.numeros === 'boolean') UI.numeros = p.numeros;
     if (typeof p.reloj === 'boolean') UI.reloj = p.reloj;
     if (p.minutos) UI.minutos = p.minutos;
+    if (typeof p.pausaIA === 'boolean') UI.iaPausada = p.pausaIA;
   } catch (e) { /* sin preferencias */ }
 }
 
@@ -120,7 +124,8 @@ function guardarPrefs() {
       tema: UI.tema,
       numeros: UI.numeros,
       reloj: UI.reloj,
-      minutos: UI.minutos
+      minutos: UI.minutos,
+      pausaIA: UI.iaPausada
     }));
   } catch (e) { /* sin almacenamiento */ }
 }
@@ -423,6 +428,7 @@ function renderBotones() {
   id('btn-numeros').textContent = UI.numeros ? 'Ocultar n\u00fameros 1-64' : 'Mostrar n\u00fameros 1-64';
   id('btn-sonido2').textContent = 'Sonido: ' + (UI.sonido ? 's\u00ed' : 'no');
   id('btn-tema2').textContent = 'Tema: ' + UI.tema;
+  id('btn-pausa-ia').textContent = UI.iaPausada ? 'IA: en pausa' : 'IA: activada';
   id('zona-tablero').classList.toggle('sin-relojes', !UI.reloj);
   pintarRelojes();
 }
@@ -671,11 +677,21 @@ function aplicarMov(mov) {
   return true;
 }
 
+function cancelarIA() {
+  if (UI.iaTimeout) { clearTimeout(UI.iaTimeout); UI.iaTimeout = null; }
+  UI.pensando = false;
+}
+
 function responderIA() {
-  if (UI.fin || UI.pensando || UI.motor.turno === UI.humanoEsBlancas) return;
+  if (UI.iaPausada || UI.fin || UI.pensando || UI.motor.turno === UI.humanoEsBlancas) return;
   UI.pensando = true;
   render();
-  setTimeout(function () {
+  var marca = UI.partidaId;
+  UI.iaTimeout = setTimeout(function () {
+    UI.iaTimeout = null;
+    UI.pensando = false;
+    if (marca !== UI.partidaId) { render(); return; }
+    if (UI.iaPausada || UI.fin || UI.motor.turno === UI.humanoEsBlancas) { render(); return; }
     var uci = null;
     try {
       if (window.jugadaLibro && UI.motor.pos.jugada <= 12) {
@@ -687,7 +703,6 @@ function responderIA() {
     } catch (e) {
       uci = null;
     }
-    UI.pensando = false;
     if (UI.fin) { render(); return; }
     if (!uci) {
       UI.estado = UI.motor.terminacion();
@@ -716,7 +731,8 @@ function quitarJugada() {
 
 function deshacer() {
   if (UI.revision !== null) { salirRevision(); return; }
-  if (UI.pensando || !UI.jugadas.length) return;
+  cancelarIA();
+  if (!UI.jugadas.length) return;
   quitarJugada();
   if (UI.motor.turno !== UI.humanoEsBlancas && UI.jugadas.length) quitarJugada();
 
@@ -734,6 +750,8 @@ function deshacer() {
 /* ------------------------------------------------------------- partidas */
 
 function nuevaPartida() {
+  cancelarIA();
+  UI.partidaId++;
   UI.motor = new Engine();
   UI.jugadas = [];
   UI.capturas = [];
@@ -1109,6 +1127,15 @@ function alternarNumeros() {
   render();
 }
 
+function alternarPausaIA() {
+  UI.iaPausada = !UI.iaPausada;
+  if (UI.iaPausada) cancelarIA();
+  guardarPrefs();
+  renderBotones();
+  toast(UI.iaPausada ? 'IA en pausa: solo se mueve si se lo pedís.' : 'IA activada.');
+  if (!UI.iaPausada && esTurnoIA()) responderIA();
+}
+
 function cambiarNivel() {
   UI.nivel = parseInt(id('sel-nivel').value, 10) || 1;
   guardarPrefs();
@@ -1217,6 +1244,7 @@ function iniciar() {
   id('btn-sonido2').addEventListener('click', alternarSonido);
   id('btn-tema').addEventListener('click', alternarTema);
   id('btn-tema2').addEventListener('click', alternarTema);
+  id('btn-pausa-ia').addEventListener('click', alternarPausaIA);
   id('sel-nivel').addEventListener('change', cambiarNivel);
   id('sel-color').addEventListener('change', cambiarColor);
   id('chk-reloj').addEventListener('change', cambiarReloj);
