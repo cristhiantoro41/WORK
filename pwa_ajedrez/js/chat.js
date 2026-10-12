@@ -251,7 +251,7 @@
   }
 
   function fen(){
-    try{ return hayTablero() ? UI.motor.fen() : ''; }catch(e){ return ''; }
+    try{ return hayTablero() ? UI.motor.a_fen() : ''; }catch(e){ return ''; }
   }
 
   function piezaEn(casilla){
@@ -357,9 +357,9 @@
       || (leerNums(preg).length>=2 && preg.trim().split(/\s+/).length<=3);
     if(!esJugada) return null;
     var mov = UI.motor.pos.movimientoDesdeTexto(uci);
-    if(!mov) return 'x';
+    if(!mov) return 'Esa jugada no es legal. Revisá los números (casillas 1-64).';
     var na = numDe(aTexto(mov.origen)), nb = numDe(aTexto(mov.destino));
-    if(!aplicarMov(mov)) return 'x';
+    if(!aplicarMov(mov)) return 'No pude aplicar esa jugada.';
     var tuya = na+'-'+nb;
     /* turno de la IA: responde */
     var m = mejorUci();
@@ -380,58 +380,86 @@
     if(!preg) return '';
     var p = preg.toLowerCase();
 
+    var AYUDA = 'Puedo: analizar la posición ("analiza", "mejor jugada"), darte opciones '
+      + '("opciones", "dame una idea"), describir ("qué ves"), mostrar la última jugada, '
+      + 'el FEN y de quién es el turno; y jugar por números, ej. "mueve 44 56". '
+      + 'También: "nueva partida", "deshacer", "abandonar".';
+
+    /* 1) mover por numeros o letras (va primero) */
     var porVoz = intentarMoverPorVoz(p);
-    if(porVoz) return porVoz;
+    if(porVoz !== null) return porVoz;
 
-    if(/(nueva partida|otra partida|reiniciar|reinicia)/.test(p)){
-      if(window.nuevaPartida){ nuevaPartida(); return 'ok'; }
-      return 'x';
+    /* 2) ayuda / comandos */
+    if(/(ayuda|qu[eé] puedo|que puedo|comandos|instrucciones|qu[eé] sab[eé]s|que sabes|para qu[eé] serv|opciones disponibles)/.test(p)){
+      return AYUDA;
     }
 
-    if(/(abandonar|rendirse|rendir|me rindo)/.test(p)){
-      var b = document.getElementById('btn-abandonar');
-      if(b){ b.click(); return 'ok'; }
-      return 'x';
+    /* 3) nueva partida */
+    if(/(nueva partida|partida nueva|otra partida|reinici|empezar|empieza|empezamos|reset|borr[oó]n|de nuevo)/.test(p)){
+      if(window.nuevaPartida){ nuevaPartida(); return 'Nueva partida lista.'; }
+      return 'No pude iniciar la partida.';
     }
 
-    if(/(deshacer|atrás|atras|retrocede)/.test(p)){
-      if(window.deshacer){ deshacer(); return 'ok'; }
-      return 'x';
+    /* 4) abandonar */
+    if(/(abandon|rendir|rend[íi]c|me rindo|resign)/.test(p)){
+      if(window.UI && UI.fin) return 'La partida ya terminó.';
+      var btnAb = document.getElementById('btn-abandonar');
+      if(btnAb){ btnAb.click(); return 'Partida abandonada.'; }
+      return 'No hay partida para abandonar.';
+    }
+
+    /* 5) deshacer */
+    if(/(deshac|deshaz|atr[áa]s|retroced|volver atr|undo|quita la [úu]ltima)/.test(p)){
+      if(window.UI && UI.fin) return 'La partida ya terminó.';
+      if(typeof deshacer==='function'){ deshacer(); return 'Listo, deshice la última jugada.'; }
+      return 'No pude deshacer.';
     }
 
     if(!hayTablero()){
-      return 'x';
+      return 'Aún no hay partida. Pulsá "Nueva partida".';
     }
 
-    if(/(opciones|sugiere|sugerencia|sugerencias|alternativas|dame ideas)/.test(p)){
+    /* 6) opciones / ideas */
+    if(/(opci[oó]n|opciones|suger|sugier|idea|alternativ|recomend|propone|propuesta|qu[eé] muevo|que muevo|qu[eé] juego|que juego|qu[eé] hago|que hago|no s[eé] qu[eé]|no se que)/.test(p)){
       return opcionesTexto(3);
     }
 
-    if(/(analiza|análisis|analisis|explica|profundiza|a fondo|mejor jugada|cual es la mejor|cuál es la mejor|cómo voy|como voy|posición|posicion)/.test(p)){
+    /* 7) analisis / mejor jugada / evaluacion */
+    if(/(analiz|an[áa]lisis|explic|profundiz|a fondo|mejor|eval|valora|ventaja|c[oó]mo voy|como voy|c[oó]mo estoy|como estoy|posici[oó]n|posicion|qui[eé]n va|quien va|qui[eé]n gana|quien gana|qu[eé] tal voy)/.test(p)){
       return analisisTexto();
     }
 
-    if(/(que ves|qué ves|describe|tablero|material)/.test(p)){
+    /* 8) describir / material */
+    if(/(qu[eé] ves|que ves|describe|tablero|material|piezas|cu[aá]ntas)/.test(p)){
       return ultimoTexto() || 'sin jugadas';
     }
 
-    if(/(ultima|última|último jugada|ultima jugada)/.test(p)){
+    /* 9) ultima jugada */
+    if(/([uú]ltim|ultima|pen[úu]ltim|ante[úu]ltim)/.test(p)){
       return ultimoTexto() || 'sin jugadas';
     }
 
+    /* 10) fen */
     if(/(fen)/.test(p)){
       return 'FEN actual:\n'+fen();
     }
 
-    if(/(hola|buenas|hey)/.test(p)){
-      return '44 ... 56';
+    /* 11) turno */
+    if(/(turno|de qui[eé]n es|a qui[eé]n le toca|a quien le toca|mueven las|le toca)/.test(p)){
+      return 'Le toca a las '+turnoTexto()+'.';
     }
 
-    if(/(adiós|adios|chao|hasta luego|nos vemos)/.test(p)){
-      return 'adios';
+    /* 12) saludo */
+    if(/(^|\s)(hola|buenas|buen d[íi]a|hey|qu[eé] tal|holi)(\s|$)/.test(p)){
+      return '¡Hola! '+AYUDA;
     }
 
-    return '44 ... 56';
+    /* 13) despedida */
+    if(/(adi[oó]s|adios|chao|chau|hasta luego|nos vemos|bye)/.test(p)){
+      return '¡Hasta luego!';
+    }
+
+    return 'No te entendí. '+AYUDA;
   }
 
   function enviar(txt){
