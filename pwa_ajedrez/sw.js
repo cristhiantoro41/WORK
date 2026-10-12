@@ -1,7 +1,7 @@
 /* sw.js - Service worker: precache explicito y estrategia cache-first. */
 'use strict';
 
-var VERSION = 'ajedrez164-v1';
+var VERSION = 'ajedrez164-v2';
 var CACHE = VERSION;
 
 /* Lista versionada de TODOS los archivos de la PWA (rutas relativas al scope). */
@@ -11,7 +11,9 @@ var ARCHIVOS = [
   './css/app.css',
   './js/engine.js',
   './js/numeros.js',
+  './js/libro.js',
   './js/ia.js',
+  './js/chat.js',
   './js/app.js',
   './manifest.webmanifest',
   './iconos/icono-192.png',
