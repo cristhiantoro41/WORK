@@ -140,10 +140,13 @@ function esFin(estado) {
 }
 
 function esTurnoHumano() {
-  return UI.revision === null && !UI.fin && !UI.pensando && UI.motor.turno === UI.humanoEsBlancas;
+  if (UI.revision !== null || UI.fin || UI.pensando) return false;
+  if (UI.iaPausada) return true;
+  return UI.motor.turno === UI.humanoEsBlancas;
 }
 
 function esTurnoIA() {
+  if (UI.iaPausada) return false;
   return UI.revision === null && !UI.fin && !UI.pensando && UI.motor.turno !== UI.humanoEsBlancas;
 }
 
@@ -1132,7 +1135,7 @@ function alternarPausaIA() {
   if (UI.iaPausada) cancelarIA();
   guardarPrefs();
   renderBotones();
-  toast(UI.iaPausada ? 'IA en pausa: solo se mueve si se lo pedís.' : 'IA activada.');
+  toast(UI.iaPausada ? 'IA en pausa: movés vos de los dos bandos.' : 'IA activada.');
   if (!UI.iaPausada && esTurnoIA()) responderIA();
 }
 
