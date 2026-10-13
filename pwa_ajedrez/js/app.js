@@ -956,7 +956,7 @@ function configurarEventos() {
     var dx = ev.clientX - arrastre.px;
     var dy = ev.clientY - arrastre.py;
     if (!arrastre.iniciado) {
-      if (dx * dx + dy * dy < 36) return;
+      if (dx * dx + dy * dy < 144) return;
       iniciarFantasma(ev);
       if (!arrastre.iniciado) return;
     }
