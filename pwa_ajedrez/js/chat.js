@@ -768,12 +768,16 @@
   function detener(){
     escuchando = false;
     pintarVoz();
+    try{ if(recon) recon.stop(); }catch(e){}
   }
 
   function escuchar(){
     if(!SR){ addBot(L('Tu navegador no permite voz.','Your browser does not support voice.')); return; }
     if(escuchando) return;
+    try{ if(recon) recon.stop(); }catch(e){}
     try{ speechSynthesis.cancel(); }catch(e){}
+    escuchando = true;
+    pintarVoz();
     recon = crearRecon();
     recon.lang = lenguajeVoz();
     recon.onstart = function(){ escuchando = true; pintarVoz(); };
